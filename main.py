@@ -1,3 +1,4 @@
+import random
 import torch
 from torch import nn
 
@@ -9,11 +10,9 @@ class RNN(nn.Module):
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.fc = nn.Sigmoid()
 
-    # input shape ( размер батча, размерность x)
-
     def forward(self, fn, x, y, hidden):
 
-        combined = torch.cat((x, y, hidden), 1)
+        combined = torch.cat((x, y, hidden))
 
         hidden = self.i2h(combined)
         x = self.i2o(combined)
@@ -23,8 +22,8 @@ class RNN(nn.Module):
         return x, y, hidden
 
 
-def init_hidden(batch_size, hidden_size):
-    return torch.zeros(batch_size, hidden_size)
+def init_hidden(hidden_size):
+    return torch.zeros(hidden_size)
 
 
 class FN(nn.Module):
@@ -37,52 +36,72 @@ class FN(nn.Module):
     def forward(self, x):
         return torch.square(x - self.x_opt) + self.f_opt
 
-dim_x = 1
-input_size = dim_x + 1
-hidden_size = 64
-output_size = 1
-num_layers = 1
+def main():
 
-batch_size = 64
-learning_rate = 0.001
+    dim_x = 1
+    input_size = dim_x + 1
+    hidden_size = 64
+    output_size = 1
+    rnn_iterations = 10
 
-model = RNN(input_size, hidden_size, output_size)
+    learning_rate = 0.001
 
-
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    model = RNN(input_size, hidden_size, output_size)
 
 
-
-def train(model, criterion, optimizer, input, target):
-    model.train()
-    optimizer.zero_grad()
-
-    fn = FN(1, 2)
-    x = input
-    y = fn(x)
-    hidden = init_hidden(batch_size, hidden_size)
-
-
-    timesteps = 5
-
-    for _ in range(timesteps):
-        x, y, hidden = model(fn, x, y, hidden)
-
-    loss = criterion(y, target)
-    loss.backward()
-    optimizer.step()
-
-    return loss
-
-
-inp = torch.randn(batch_size, 1)
-target = torch.tensor([batch_size, 2], dtype=torch.float32)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
 
-loss = train(model, criterion, optimizer, inp, target)
-print(loss)
+    def train(model, criterion, optimizer, input, target):
+        model.train()
+        optimizer.zero_grad()
+
+        x, fn = input
+        y = fn(x)
+        hidden = init_hidden(hidden_size)
+
+        timesteps = rnn_iterations
+
+        for _ in range(timesteps):
+            x, y, hidden = model(fn, x, y, hidden)
+
+        loss = criterion(y, target)
+        loss.backward()
+        optimizer.step()
+
+        return loss
+
+    for _ in range(10000):
+        x_opt = random.randint(-5, 5)
+        f_opt = random.randint(-5, 5)
+
+        input = (torch.randn(1), FN(x_opt, f_opt))
+
+        target = torch.tensor([f_opt], dtype=torch.float32)
+
+        loss = train(model, criterion, optimizer, input, target)
+        print(loss)
+
+    with torch.no_grad():
+        timesteps = rnn_iterations
+
+        black_box = lambda x: (x ** 2)
+
+        x = torch.tensor([4])
+        print(x)
+        y = black_box(x)
+
+        hidden = init_hidden(hidden_size)
+
+        for _ in range(timesteps):
+            x, y, hidden = model(black_box, x, y, hidden)
+            print(f"x = {x.item()} y = {y.item()}")
+
+if __name__ == "__main__":
+    main()
+
 
 
 
