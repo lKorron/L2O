@@ -17,7 +17,7 @@ class RNN(nn.Module):
 
         hidden = self.i2h(combined)
         x = self.i2o(combined)
-        x = 2 * self.sigmoid(x) - 1
+        x = (2 * self.sigmoid(x) - 1) * 5
 
         y = fn(x)
 
@@ -39,8 +39,8 @@ class FN(nn.Module):
 
 
 def create_black_box():
-    a, b, c = random.randint(1, 10), 0, random.randint(-10, 10)
-    return lambda x: a * (x ** 2 - b) + c, (a, b, c)
+    a, b, c = random.randint(1, 10), random.randint(-5, 5), random.randint(-5, 5)
+    return lambda x: a * ((x - b) ** 2) + c, (a, b, c)
 
 
 def train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations):
@@ -89,8 +89,8 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    for _ in range(1000):
-        x_opt = random.randint(-5, 5)
+    for _ in range(50000):
+        x_opt = 0
         f_opt = random.randint(-5, 5)
 
         input = (torch.randn(1) * 10, FN(x_opt, f_opt))
@@ -98,7 +98,7 @@ def main():
         target = torch.tensor([f_opt], dtype=torch.float32)
 
         loss = train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations)
-        print(loss)
+        # print(loss)
 
     with torch.no_grad():
         # black_box = lambda x: 35 * (x ** 2) + 16
@@ -111,7 +111,8 @@ def main():
 
             black_box, (a, b, c) = create_black_box()
 
-            print(f"function: {a}(x^2 - {b}) + {c}")
+
+            print(f"function: {a}(x - {b})^2 + {c}")
 
             start_hidden = init_hidden(hidden_size)
             best_iteration = test_black_box(model,
@@ -148,16 +149,16 @@ def test_black_box(model, black_box, rnn_iterations, start_point, start_hidden):
 
 
 def get_best_iteration(results, function, epsilon = 0.1):
-    # max_tuple = min(results, key=operator.itemgetter(1))
-    # iteration = results.index(max_tuple) + 1
-    max_tuple = results[9]
-    iteration = 10
-
-    for i, (x, y) in enumerate(results):
-        if abs(y - function(0)) <= epsilon:
-            iteration = i + 1
-            max_tuple = (x, y)
-            break
+    max_tuple = min(results, key=operator.itemgetter(1))
+    iteration = results.index(max_tuple) + 1
+    # max_tuple = results[9]
+    # iteration = 10
+    #
+    # for i, (x, y) in enumerate(results):
+    #     if abs(y - function(0)) <= epsilon:
+    #         iteration = i + 1
+    #         max_tuple = (x, y)
+    #         break
 
 
     return iteration, max_tuple
