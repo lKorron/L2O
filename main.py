@@ -89,7 +89,8 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    for _ in range(50000):
+
+    for i in range(10000):
         x_opt = 0
         f_opt = random.randint(-5, 5)
 
@@ -98,7 +99,9 @@ def main():
         target = torch.tensor([f_opt], dtype=torch.float32)
 
         loss = train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations)
-        # print(loss)
+
+        if (i % 100 == 0):
+            print(loss)
 
     with torch.no_grad():
         # black_box = lambda x: 35 * (x ** 2) + 16
