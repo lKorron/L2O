@@ -81,6 +81,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
 
 
 def main():
+    # input_size - (x1, x2, x3, ..., xn, y)
     dim_x = 1
     input_size = dim_x + 1
     hidden_size = 64
@@ -94,7 +95,7 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    dataset_size = 1000
+    dataset_size = 10000
 
     for i in range(dataset_size):
         # генерация параметров white-box
