@@ -5,9 +5,10 @@ from torch import nn
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, output_size, range = 5):
         super().__init__()
         self.hidden_size = hidden_size
+        self.range = range
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.sigmoid = nn.Sigmoid()
@@ -17,7 +18,7 @@ class RNN(nn.Module):
 
         hidden = self.i2h(combined)
         x = self.i2o(combined)
-        x = (2 * self.sigmoid(x) - 1) * 5
+        x = (2 * self.sigmoid(x) - 1) * self.range
 
         y = fn(x)
 
@@ -41,6 +42,17 @@ class FN(nn.Module):
 def create_black_box():
     a, b, c = random.randint(1, 10), random.randint(-5, 5), random.randint(-5, 5)
     return lambda x: a * ((x - b) ** 2) + c, (a, b, c)
+
+
+# обучаться не только на нуле
+# подправить датасет
+# исправить инпут
+# больше tшек
+# понменять инпут на статистические х-ки
+# dx
+# loss от x
+# график ошибок, при разных t
+
 
 
 def train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations):
@@ -80,7 +92,7 @@ def main():
     input_size = dim_x + 1
     hidden_size = 64
     output_size = 1
-    rnn_iterations = 10
+    rnn_iterations = 50
 
     learning_rate = 0.001
 
