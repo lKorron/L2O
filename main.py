@@ -1,13 +1,18 @@
-import operator
 import random
 import torch
 from torch import nn
 
+from utils import test_black_box, get_norm
 
+
+# Сеть имеет два линейных слоя - первый конвертирует
+# конкатенацию x, y и hidden в новый hidden,
+# второй на основании такой же конкатенации создает output, который передается в сигмоиду.
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, output_size, search_range=5):
         super().__init__()
         self.hidden_size = hidden_size
+        self.search_range = search_range
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
         self.i2o = nn.Linear(input_size + hidden_size, output_size)
         self.sigmoid = nn.Sigmoid()
@@ -17,7 +22,7 @@ class RNN(nn.Module):
 
         hidden = self.i2h(combined)
         x = self.i2o(combined)
-        x = (2 * self.sigmoid(x) - 1) * 5
+        x = (2 * self.sigmoid(x) - 1) * self.search_range
 
         y = fn(x)
 
@@ -28,6 +33,7 @@ def init_hidden(hidden_size):
     return torch.zeros(hidden_size)
 
 
+# white-box (используется при обучении, можно посчитать градиент)
 class FN(nn.Module):
     def __init__(self, x_opt, f_opt):
         super().__init__()
@@ -38,6 +44,7 @@ class FN(nn.Module):
         return torch.square(x - self.x_opt) + self.f_opt
 
 
+# black-box (используется при тестировнии, нельзя посчитать градиент)
 def create_black_box():
     a, b, c = random.randint(1, 10), random.randint(-5, 5), random.randint(-5, 5)
     return lambda x: a * ((x - b) ** 2) + c, (a, b, c)
@@ -47,28 +54,26 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     model.train()
     optimizer.zero_grad()
 
+    # инициализация начального состояния rnn
     x, fn = input
     y = fn(x)
     hidden = init_hidden(hidden_size)
 
     timesteps = rnn_iterations
 
+    # форвард-степ по всем итерациям rnn
     for _ in range(timesteps):
         x, y, hidden = model(fn, x, y, hidden)
 
+    # расчет лосса, градиента, градиентный шаг
     loss = criterion(y, target)
     loss.backward()
     optimizer.step()
 
-    total_norm = 0
+    # проверка нормы градиента
+    # print(get_norm(model))
 
-    for p in model.parameters():
-        param_norm = p.grad.data.norm(2)
-        total_norm += param_norm.item() ** 2
-    total_norm = total_norm ** (1. / 2)
-
-    # print(total_norm)
-
+    # ограничение нормы градиента
     max_norm = 20.
     nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
@@ -89,23 +94,25 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    for _ in range(10000):
+    dataset_size = 1000
+
+    for i in range(dataset_size):
+        # генерация параметров white-box
         x_opt = 0
         f_opt = random.randint(-5, 5)
 
-        def fn(x):
-            return torch.square(x - x_opt) + f_opt
-
+        # генерация начальной точки, white-box
         input = (torch.randn(1) * 10, FN(x_opt, f_opt))
 
         target = torch.tensor([f_opt], dtype=torch.float32)
 
         loss = train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations)
-        print(loss)
 
+        if i % 100 == 0:
+            print(loss)
+
+    # тестирование
     with torch.no_grad():
-        # black_box = lambda x: 35 * (x ** 2) + 16
-        #
         functions_number = 1000
         iter_sum = 0
 
@@ -113,7 +120,6 @@ def main():
             start_point = torch.tensor([random.randint(-10, 10)])
 
             black_box, (a, b, c) = create_black_box()
-
 
             print(f"function: {a}(x - {b})^2 + {c}")
 
@@ -129,42 +135,6 @@ def main():
 
         print(f"average iteration of inheritance: {average_iteration}")
 
-
-def test_black_box(model, black_box, rnn_iterations, start_point, start_hidden):
-    timesteps = rnn_iterations
-    x = start_point
-    y = black_box(x)
-    hidden = start_hidden
-
-    results = []
-
-    for _ in range(timesteps):
-        x, y, hidden = model(black_box, x, y, hidden)
-        results.append((x, y))
-        print(f"x = {x.item()} y = {y.item()}")
-
-    iteration, (best_x, best_y) = get_best_iteration(results, black_box)
-
-    print(f"x = {best_x.item()} y = {best_y.item()} at iteration {iteration}")
-
-    return iteration
-
-
-
-def get_best_iteration(results, function, epsilon = 0.1):
-    max_tuple = min(results, key=operator.itemgetter(1))
-    iteration = results.index(max_tuple) + 1
-    # max_tuple = results[9]
-    # iteration = 10
-    #
-    # for i, (x, y) in enumerate(results):
-    #     if abs(y - function(0)) <= epsilon:
-    #         iteration = i + 1
-    #         max_tuple = (x, y)
-    #         break
-
-
-    return iteration, max_tuple
 
 if __name__ == "__main__":
     main()
