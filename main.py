@@ -44,7 +44,7 @@ class FN(nn.Module):
         return torch.square(x - self.x_opt) + self.f_opt
 
 
-# black-box (используется при тестировнии, нельзя посчитать градиент)
+# black-box (используется при тестировании, нельзя посчитать градиент)
 def create_black_box():
     a, b, c = random.randint(1, 10), random.randint(-5, 5), random.randint(-5, 5)
     return lambda x: a * ((x - b) ** 2) + c, (a, b, c)
@@ -95,7 +95,7 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    dataset_size = 10000
+    dataset_size = 1000
 
     for i in range(dataset_size):
         # генерация параметров white-box
@@ -114,8 +114,9 @@ def main():
 
     # тестирование
     with torch.no_grad():
-        functions_number = 1000
+        functions_number = 10000
         iter_sum = 0
+        error_sum = 0
 
         for _ in range(functions_number):
             start_point = torch.tensor([random.randint(-10, 10)])
@@ -125,16 +126,24 @@ def main():
             print(f"function: {a}(x - {b})^2 + {c}")
 
             start_hidden = init_hidden(hidden_size)
-            best_iteration = test_black_box(model,
+            best_iteration, best_x = test_black_box(model,
                                             black_box,
                                             rnn_iterations,
                                             start_point,
                                             start_hidden)
+
+
+            error = abs(best_x - b)
+
             iter_sum += best_iteration
+            error_sum += error
+
 
         average_iteration = iter_sum / functions_number
+        average_error = error_sum / functions_number
 
         print(f"average iteration of inheritance: {average_iteration}")
+        print(f"average error: {average_error}")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ def test_black_box(model, black_box, rnn_iterations, start_point, start_hidden):
 
     print(f"x = {best_x.item()} y = {best_y.item()} at iteration {iteration}")
 
-    return iteration
+    return iteration, best_x.item()
 
 
 def get_best_iteration(results, function, epsilon=0.1):
