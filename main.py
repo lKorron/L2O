@@ -95,7 +95,7 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    dataset_size = 1000
+    dataset_size = 10000
 
     for i in range(dataset_size):
         # генерация параметров white-box
@@ -103,7 +103,11 @@ def main():
         f_opt = random.randint(-5, 5)
 
         # генерация начальной точки, white-box
-        input = (torch.randn(1) * 10, FN(x_opt, f_opt))
+        x_initial = torch.tensor([random.uniform(-5, 5)])
+
+        old = torch.randn(1) * 10
+
+        input = (x_initial, FN(x_opt, f_opt))
 
         target = torch.tensor([f_opt], dtype=torch.float32)
 
@@ -114,12 +118,13 @@ def main():
 
     # тестирование
     with torch.no_grad():
-        functions_number = 10000
+        functions_number = 1000
         iter_sum = 0
         error_sum = 0
 
         for _ in range(functions_number):
-            start_point = torch.tensor([random.randint(-10, 10)])
+            start_point = torch.tensor([random.uniform(-5, 5)])
+
 
             black_box, (a, b, c) = create_black_box()
 
