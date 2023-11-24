@@ -66,7 +66,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
         x, y, hidden = model(fn, x, y, hidden)
 
     # расчет лосса, градиента, градиентный шаг
-    loss = criterion(y, target)
+    loss = criterion(x, target)
     loss.backward()
     optimizer.step()
 
@@ -109,7 +109,7 @@ def main():
 
         input = (x_initial, FN(x_opt, f_opt))
 
-        target = torch.tensor([f_opt], dtype=torch.float32)
+        target = torch.tensor([x_opt], dtype=torch.float32)
 
         loss = train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations)
 
@@ -118,7 +118,7 @@ def main():
 
     # тестирование
     with torch.no_grad():
-        functions_number = 1000
+        functions_number = 10000
         iter_sum = 0
         error_sum = 0
 
