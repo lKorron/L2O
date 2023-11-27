@@ -1,6 +1,9 @@
 import random
+
+import numpy as np
 import torch
 from torch import nn
+from matplotlib import pyplot as plt
 
 from utils import test_black_box, get_norm
 
@@ -122,7 +125,12 @@ def main():
         iter_sum = 0
         error_sum = 0
 
-        for _ in range(functions_number):
+
+        error_per_step = 0
+        graph_step = 500
+        graph_points = []
+
+        for i in range(functions_number):
             start_point = torch.tensor([random.uniform(-5, 5)])
 
 
@@ -143,12 +151,34 @@ def main():
             iter_sum += best_iteration
             error_sum += error
 
+            error_per_step += error
+
+            # data for graph
+            if (i + 1) % graph_step == 0 and i != 0:
+                # if error per interval required
+                # graph_points.append(error_per_step / graph_step)
+                # error_per_step = 0
+
+                graph_points.append(error_per_step / i)
+
+
 
         average_iteration = iter_sum / functions_number
         average_error = error_sum / functions_number
 
         print(f"average iteration of inheritance: {average_iteration}")
         print(f"average error: {average_error}")
+        # print(np.mean(graph_points))
+
+        x_points = [i * graph_step for i in range(1, len(graph_points) + 1)]
+
+
+        plt.plot(x_points, graph_points)
+        plt.title("Mean error graph")
+        plt.xlabel("Number of test functions")
+        plt.ylabel("|x - x_true|")
+        plt.show()
+
 
 
 if __name__ == "__main__":
