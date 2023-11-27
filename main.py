@@ -172,7 +172,7 @@ def main():
         x_points = [i * graph_step for i in range(1, len(graph_points) + 1)]
 
         plt.plot(x_points, graph_points)
-        plt.title("Mean error graph")
+        plt.title(f"Mean error graph, h = {rnn_iterations}")
         plt.xlabel("Number of test functions")
         plt.ylabel("|x - x_true|")
         plt.show()
