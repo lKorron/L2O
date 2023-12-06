@@ -1,171 +1,176 @@
 import random
-
 import numpy as np
 import torch
 from torch import nn
-from matplotlib import pyplot as plt
+from tqdm import tqdm
+import matplotlib
+import matplotlib.pyplot as plt
+from model import RNN
 
-from utils import test_black_box, get_norm
+
+matplotlib.use('TkAgg')
+plt.style.use('fast')
 
 
-# Сеть имеет два линейных слоя - первый конвертирует
-# конкатенацию x, y и hidden в новый hidden,
-# второй на основании такой же конкатенации создает output, который передается в сигмоиду.
-class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, searching_range=5):
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+
+class IterationWeightedLoss(nn.Module):
+    def __init__(self, tet=0.9):
         super().__init__()
-        self.hidden_size = hidden_size
-        self.searching_range = searching_range
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        self.i2o = nn.Linear(input_size + hidden_size, output_size)
-        self.sigmoid = nn.Sigmoid()
+        self.tet = tet
+        self.iteration = 0
 
-    def forward(self, fn, x, y, hidden):
-        combined = torch.cat((x, y, hidden))
+    def forward(self, target, min_target):
+        self.iteration += 1
+        return (1 / (self.tet**self.iteration)) * torch.relu(abs(min_target - target) - 0.1)
 
-        hidden = self.i2h(combined)
-        x = self.i2o(combined)
-        x = (2 * self.sigmoid(x) - 1) * self.searching_range
-
-        y = fn(x)
-
-        return x, y, hidden
-
-
-def init_hidden(hidden_size):
-    return torch.zeros(hidden_size)
-
-
-# white-box (используется при обучении, можно посчитать градиент)
 class FN(nn.Module):
-    def __init__(self, x_opt, f_opt):
+    def __init__(self, coef, x_opt, f_opt):
         super().__init__()
+        self.coef = coef
         self.x_opt = x_opt
         self.f_opt = f_opt
 
     def forward(self, x):
-        return torch.square(x - self.x_opt) + self.f_opt
+        return self.coef * torch.square(x - self.x_opt) + self.f_opt
 
+def init_hidden(hidden_size):
+    return torch.randn(hidden_size) * torch.sqrt(torch.tensor(1. / hidden_size))
 
-# black-box (используется при тестировании, нельзя посчитать градиент)
-def create_black_box(param_range=5):
-    a, b, c = (random.randint(1, param_range * 2),
-               random.randint(-param_range, param_range),
-               random.randint(-param_range, param_range))
-    return lambda x: a * ((x - b) ** 2) + c, (a, b, c)
+def generate_random_values():
+    coef = random.uniform(1, 10)
+    x_opt = random.uniform(-5, 5)
+    f_opt = random.uniform(-5, 5)
+    # x_initial = torch.tensor([random.uniform(-5, 5)]).to(device)
+    x_initial = None
+    return coef, x_opt, f_opt, x_initial
+
+def test_black_box(model, black_box, rnn_iterations, start_point, start_hidden):
+    x = start_point.to(device)
+    y = black_box(x)
+    hidden = start_hidden.to(device)
+    y_s = []
+    x_s = []
+    for _ in range(rnn_iterations):
+        x, y, hidden = model(black_box, x, y, hidden)
+        y_s.append(y.item())
+        x_s.append(x.item())
+    # best = min(y_s)
+    # idx = torch.argmin(torch.tensor(y_s))
+    # return idx, x_s[idx.item()], best
+    # return 5, x.item(), y.item()
+    return rnn_iterations, y_s, x_s
 
 
 def train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations):
     model.train()
     optimizer.zero_grad()
+    criterion.zero_grad()
+    
+    criterion = IterationWeightedLoss()
 
+    # инициализация начального состояния rnn
     x, fn = input
     y = fn(x)
-    hidden = init_hidden(hidden_size)
+    # minn = y.to(device)
+    hidden = init_hidden(hidden_size).to(device)
 
-    timesteps = rnn_iterations
-
-    for _ in range(timesteps):
-        x, y, hidden = model(fn, x, y, hidden)
-
-    loss = criterion(x, target)
-    loss.backward()
+    total_loss = 0
+    
+    for _ in range(rnn_iterations):
+        x, y, hidden = model(fn, x.to(device), y.to(device), hidden)
+        loss = criterion(target.to(device), y)
+        total_loss += loss
+    total_loss.backward()
     optimizer.step()
-
-    max_norm = 20.
-    nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
     return loss
 
+dim_x = 1
+input_size = dim_x + 1
+hidden_size = 64
+output_size = 1
+rnn_iterations = 5
+verbose = 1000
 
-def main():
-    # input_size - (x1, x2, x3, ..., xn, y)
-    dim_x = 1
-    input_size = dim_x + 1
-    hidden_size = 64
-    output_size = 1
-    searching_range = 10
+learning_rate = 1e-3
 
-    rnn_iterations = 10
+model = RNN(input_size, hidden_size, output_size)
 
-    learning_rate = 0.001
+model = model.to(device)
 
-    model = RNN(input_size, hidden_size, output_size, searching_range)
+criterion = IterationWeightedLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+dataset_size = 30000
 
-    dataset_size = 10000
+losses = []
+iteration = 1
+summ = 0
+fig, ax = plt.subplots()
+loss_text = ax.text(0.02, 0.95, "", transform=ax.transAxes, verticalalignment="top")
 
-    for i in range(dataset_size):
-        x_opt = 0
-        f_opt = random.randint(-searching_range, searching_range)
+x_initial = torch.tensor([0.0]).to(device)
 
-        x_initial = torch.tensor([random.uniform(-searching_range, searching_range)])
+for i in tqdm(range(dataset_size)):
+    coef, x_opt, f_opt, _ = generate_random_values()
+    input = (x_initial, FN(coef, x_opt, f_opt))
+    target = torch.tensor([f_opt], dtype=torch.float32, requires_grad=True)
+    loss = train(
+        model, criterion, optimizer, input, target, hidden_size, rnn_iterations
+    )
+    summ += loss.item()
+    losses.append(summ / iteration)
+    iteration += 1
+    if i % verbose == 0:
+        plt.plot(losses) # Plot the data
+        loss_text.set_text(f"Loss: {losses[-1]:.3f}")
+        plt.pause(0.05)
 
-        input = (x_initial, FN(x_opt, f_opt))
+plt.show()
 
-        target = torch.tensor([x_opt], dtype=torch.float32)
 
-        loss = train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations)
+# тестирование
+start_point = torch.tensor([0.0]).to(device)
+with torch.no_grad():
+    functions_number = 10000
+    iter_sum = 0
 
-        if i % 100 == 0:
-            print(loss)
+    y_errors = []
+    x_errors = []
 
-    # тестирование
-    with torch.no_grad():
-        functions_number = 10000
-        iter_sum = 0
-        error_sum = 0
+    for _ in tqdm(range(functions_number)):
 
-        error_per_step = 0
-        graph_step = 500
-        graph_points = []
+        coef, x_opt, f_opt, _ = generate_random_values()
+        fn = FN(coef, x_opt, f_opt)
 
-        for i in range(functions_number):
-            start_point = torch.tensor([random.uniform(-searching_range, searching_range)])
+        start_hidden = init_hidden(hidden_size)
+        
+        best_iteration, y_s, x_s = test_black_box(
+            model, fn, rnn_iterations, start_point, start_hidden
+        )
 
-            black_box, (a, b, c) = create_black_box(searching_range)
+        iter_sum += best_iteration
+        
+        y_errors.append([abs(f_opt - y) for y in y_s])
+        x_errors.append([abs(x_opt - x) for x in x_s])
 
-            print(f"function: {a}(x - {b})^2 + {c}")
-
-            start_hidden = init_hidden(hidden_size)
-            best_iteration, best_x = test_black_box(model,
-                                                    black_box,
-                                                    rnn_iterations,
-                                                    start_point,
-                                                    start_hidden)
-
-            error = abs(best_x - b)
-
-            iter_sum += best_iteration
-            error_sum += error
-
-            error_per_step += error
-
-            # data for graph
-            if (i + 1) % graph_step == 0 and i != 0:
-                # if error per interval required
-                # graph_points.append(error_per_step / graph_step)
-                # error_per_step = 0
-
-                graph_points.append(error_per_step / i)
-
-        average_iteration = iter_sum / functions_number
-        average_error = error_sum / functions_number
-
-        print(f"average iteration of inheritance: {average_iteration}")
-        print(f"average error: {average_error}")
-        # print(np.mean(graph_points))
-
-        x_points = [i * graph_step for i in range(1, len(graph_points) + 1)]
-
-        plt.plot(x_points, graph_points)
-        plt.title(f"Mean error graph, h = {rnn_iterations}")
-        plt.xlabel("Number of test functions")
-        plt.ylabel("|x - x_true|")
+    for i in range(rnn_iterations):
+        fig, axs = plt.subplots(2)
+        y_values = [y[i] for y in y_errors]
+        x_values = [x[i] for x in x_errors]
+        axs[0].hist(y_values, bins=50)
+        axs[0].set_title(f'Y Errors at {i+1} iteration')
+        axs[0].axvline(np.median(y_values), color='r', linestyle='dashed', linewidth=2)
+        axs[0].text(0.95, 0.95, f'Median: {np.median(y_values):.2f}', verticalalignment='top', horizontalalignment='right', transform=axs[0].transAxes, color='red', fontsize=10)
+        axs[0].set_xlabel(f'Error Value |y_opt - y_{i+1}|')  # set x-axis label
+        axs[0].set_ylabel('Frequency')  # set y-axis label
+        axs[1].hist(x_values, bins=50)
+        axs[1].set_title(f'X Errors at {i+1} iteration')
+        axs[1].axvline(np.median(x_values), color='r', linestyle='dashed', linewidth=2)
+        axs[1].text(0.95, 0.95, f'Median: {np.median(x_values):.2f}', verticalalignment='top', horizontalalignment='right', transform=axs[1].transAxes, color='red', fontsize=10)
+        axs[1].set_xlabel(f'Error Value |x_opt - x_{i+1}|')  # set x-axis label
+        axs[1].set_ylabel('Frequency')  # set y-axis label
         plt.show()
-
-
-if __name__ == "__main__":
-    main()
