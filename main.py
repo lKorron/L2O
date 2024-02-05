@@ -53,7 +53,11 @@ class FN(nn.Module):
         self.f_opt = f_opt.to(device)
 
     def forward(self, x):
-        return torch.dot(self.coef, (x - self.x_opt) ** 2) + self.f_opt
+        squared_diffs = (x - self.x_opt) ** 2
+        weighted_diffs = torch.mul(self.coef, squared_diffs)
+        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=-1)
+        result = sum_of_weighted_diffs + self.f_opt
+        return result
 
 
 def init_hidden(hidden_size):
