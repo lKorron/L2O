@@ -59,7 +59,7 @@ def init_hidden(hidden_size):
 def generate_random_values():
     coef = torch.rand(DIMENTION) * 9 + 1
     x_opt = torch.rand(DIMENTION) * 10 - 5
-    f_opt = torch.rand(DIMENTION) * 10 - 5
+    f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
 
 
@@ -81,7 +81,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     return total_loss
 
 
-DIMENTION = 1
+DIMENTION = 2
 input_size = 2 * DIMENTION
 hidden_size = 64
 output_size = DIMENTION
