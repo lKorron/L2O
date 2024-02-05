@@ -17,7 +17,8 @@ class RNN(nn.Module):
             nn.Tanh(),
             nn.Linear(hidden_size, hidden_size),
             nn.LeakyReLU(),
-            nn.Linear(hidden_size, output_size),
+            # i20 вычисляет x, input - (x1,x2,y)
+            nn.Linear(hidden_size, input_size - 1),
         )
 
     def forward(self, fn, x, y, hidden):

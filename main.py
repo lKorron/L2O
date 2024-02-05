@@ -8,7 +8,7 @@ from model import RNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/1d_1")
+writer = SummaryWriter("runs/2d_1")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -61,7 +61,7 @@ def init_hidden(hidden_size):
 
 
 def generate_random_values():
-    coef = torch.rand(DIMENTION) * 9 + 1
+    coef = torch.rand(1) * 9 + 1
     x_opt = torch.rand(DIMENTION) * 10 - 5
     f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
@@ -85,15 +85,15 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     return total_loss
 
 
-DIMENTION = 1
-input_size = 2 * DIMENTION
+DIMENTION = 2
+input_size = 2 * DIMENTION - 1
 hidden_size = 64
-output_size = DIMENTION
+output_size = 1
 rnn_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
 
-model = RNN(input_size, hidden_size, output_size)
+model = RNN(input_size, hidden_size, 1)
 model = model.to(device)
 
 criterion = IterationWeightedLoss()
