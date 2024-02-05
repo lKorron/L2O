@@ -6,6 +6,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 from model import RNN
 
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter("runs/1d_1")
+
 matplotlib.use("TkAgg")
 plt.style.use("fast")
 
@@ -81,7 +85,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     return total_loss
 
 
-DIMENTION = 2
+DIMENTION = 1
 input_size = 2 * DIMENTION
 hidden_size = 64
 output_size = DIMENTION
@@ -115,17 +119,20 @@ for i in tqdm(range(1, dataset_size + 1)):
     )
     summ += loss.item()
     losses.append(summ / i)
-    if i % verbose == 0:
-        plt.plot(losses, color="blue")
-        plt.title("Training loss")
-        plt.xlabel("Iteration")
-        plt.ylabel("Loss")
-        loss_text.set_text(f"Loss: {losses[-1]:.3f}")
-        plt.pause(0.05)
-        shelduler.step(loss)
 
-plt.savefig(f"train_b_{losses[-1]:.3f}.png")
-plt.show()
+    writer.add_scalar("Iteration weighted loss", summ / i, i)
+
+#     if i % verbose == 0:
+#         plt.plot(losses, color="blue")
+#         plt.title("Training loss")
+#         plt.xlabel("Iteration")
+#         plt.ylabel("Loss")
+#         loss_text.set_text(f"Loss: {losses[-1]:.3f}")
+#         plt.pause(0.05)
+#         shelduler.step(loss)
+#
+# # plt.savefig(f"train_b_{losses[-1]:.3f}.png")
+# plt.show()
 
 
 start_point = torch.zeros(DIMENTION).to(device)
@@ -220,8 +227,9 @@ with torch.no_grad():
         axs[1].set_xlabel(f"Error Value |x_opt - x_{i+1}|")
         axs[1].set_ylabel("Frequency")
         plt.subplots_adjust(hspace=0.5)
-        plt.savefig(f"plot_b_{i+1}.png")
-        plt.show()
+        # plt.savefig(f"plot_b_{i+1}.png")
+        writer.add_figure(f"Iteration {i + 1}", plt.gcf())
+        # plt.show()
 
 # median_y_errors = []
 # median_x_errors = []
