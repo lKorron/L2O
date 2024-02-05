@@ -8,7 +8,7 @@ from model import RNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_1")
+writer = SummaryWriter("runs/2d_2")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -53,7 +53,7 @@ class FN(nn.Module):
         self.f_opt = f_opt.to(device)
 
     def forward(self, x):
-        return self.coef * torch.sum((x - self.x_opt) ** 2, dim=-1) + self.f_opt
+        return torch.dot(self.coef, (x - self.x_opt) ** 2) + self.f_opt
 
 
 def init_hidden(hidden_size):
@@ -61,7 +61,8 @@ def init_hidden(hidden_size):
 
 
 def generate_random_values():
-    coef = torch.rand(1) * 9 + 1
+    coef = torch.rand(DIMENTION) * 9 + 1
+    # coef = torch.ones(2)
     x_opt = torch.rand(DIMENTION) * 10 - 5
     f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
