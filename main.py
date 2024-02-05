@@ -62,7 +62,7 @@ def init_hidden(hidden_size):
 
 def generate_random_values():
     coef = torch.rand(DIMENTION) * 9 + 1
-    # coef = torch.ones(2)
+
     x_opt = torch.rand(DIMENTION) * 10 - 5
     f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
