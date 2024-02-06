@@ -8,7 +8,7 @@ from model import RNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_2")
+writer = SummaryWriter("runs/3d_1")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -65,9 +65,9 @@ def init_hidden(hidden_size):
 
 
 def generate_random_values():
-    coef = torch.rand(DIMENTION) * 9 + 1
+    coef = torch.rand(DIMENSION) * 9 + 1
 
-    x_opt = torch.rand(DIMENTION) * 10 - 5
+    x_opt = torch.rand(DIMENSION) * 10 - 5
     f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
 
@@ -85,13 +85,14 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
         x, y, hidden = model(fn, x, y, hidden)
         loss = criterion(target, y)
         total_loss += loss
+
     total_loss.backward()
     optimizer.step()
     return total_loss
 
 
-DIMENTION = 2
-input_size = 2 * DIMENTION - 1
+DIMENSION = 2
+input_size = DIMENSION + 1
 hidden_size = 64
 output_size = 1
 rnn_iterations = 5
@@ -103,16 +104,16 @@ model = model.to(device)
 
 criterion = IterationWeightedLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-shelduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
-dataset_size = 30000
+dataset_size = 40000
 
 losses = []
 summ = 0
 fig, ax = plt.subplots()
 loss_text = ax.text(0.8, 0.95, "", transform=ax.transAxes, verticalalignment="top")
 
-x_initial = torch.zeros(DIMENTION).to(device)
+x_initial = torch.zeros(DIMENSION).to(device)
 
 for i in tqdm(range(1, dataset_size + 1)):
     coef, x_opt, f_opt = generate_random_values()
@@ -127,20 +128,20 @@ for i in tqdm(range(1, dataset_size + 1)):
 
     writer.add_scalar("Iteration weighted loss", summ / i, i)
 
-#     if i % verbose == 0:
+    if i % verbose == 0:
 #         plt.plot(losses, color="blue")
 #         plt.title("Training loss")
 #         plt.xlabel("Iteration")
 #         plt.ylabel("Loss")
 #         loss_text.set_text(f"Loss: {losses[-1]:.3f}")
 #         plt.pause(0.05)
-#         shelduler.step(loss)
+        scheduler.step(loss)
 #
 # # plt.savefig(f"train_b_{losses[-1]:.3f}.png")
 # plt.show()
 
 
-start_point = torch.zeros(DIMENTION).to(device)
+start_point = torch.zeros(DIMENSION).to(device)
 
 with torch.no_grad():
     functions_number = 10000
