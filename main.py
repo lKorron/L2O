@@ -8,7 +8,7 @@ from model import RNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/3d_1")
+writer = SummaryWriter("runs/2d_3")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -48,23 +48,18 @@ class IterationWeightedLoss(nn.Module):
 class FN(nn.Module):
     def __init__(self, coef, x_opt, f_opt):
         super(FN, self).__init__()
-        self.coef = coef  # Предполагается размер [batch_size, dimension]
-        self.x_opt = x_opt  # Предполагается размер [batch_size, dimension]
-        self.f_opt = f_opt  # Предполагается размер [batch_size, 1]
+        self.coef = coef
+        self.x_opt = x_opt
+        self.f_opt = f_opt
 
     def forward(self, x):
-        # x: [batch_size, dimension]
-        # Вычисляем квадрат разности между x и x_opt
-        squared_diffs = (x - self.x_opt) ** 2  # [batch_size, dimension]
+        squared_diffs = (x - self.x_opt) ** 2
 
-        # Умножаем квадраты разности на соответствующие коэффициенты
-        weighted_diffs = squared_diffs * self.coef  # [batch_size, dimension]
+        weighted_diffs = squared_diffs * self.coef
 
-        # Суммируем полученные значения по последнему измерению для каждого x в батче
-        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)  # [batch_size, 1]
+        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)
 
-        # Добавляем f_opt к сумме для каждого x
-        result = sum_of_weighted_diffs + self.f_opt  # [batch_size, 1]
+        result = sum_of_weighted_diffs + self.f_opt
 
         return result
 
@@ -121,7 +116,8 @@ criterion = IterationWeightedLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
-dataset_size = 8000
+# Размер выборки = итерации * раземер батча
+train_iterations = 8000
 
 losses = []
 summ = 0
@@ -130,7 +126,7 @@ loss_text = ax.text(0.8, 0.95, "", transform=ax.transAxes, verticalalignment="to
 
 x_initial = torch.zeros(batch_size, DIMENSION).to(device)
 
-for i in tqdm(range(1, dataset_size + 1)):
+for i in tqdm(range(1, train_iterations + 1)):
     coef, x_opt, f_opt = generate_random_values(batch_size)
     fn = FN(coef, x_opt, f_opt)
     input = (x_initial, fn)
@@ -157,17 +153,17 @@ for i in tqdm(range(1, dataset_size + 1)):
 # plt.show()
 
 
-start_point = torch.zeros(DIMENSION).to(device)
+start_point = torch.zeros(batch_size, DIMENSION).to(device)
 
 with torch.no_grad():
-    functions_number = 10000
+    test_iterations = 1200
     iter_sum = 0
 
     y_errors = []
     x_errors = []
 
-    for _ in tqdm(range(functions_number)):
-        coef, x_opt, f_opt = generate_random_values()
+    for _ in tqdm(range(test_iterations)):
+        coef, x_opt, f_opt = generate_random_values(batch_size)
         fn = FN(coef, x_opt, f_opt)
 
         start_hidden = init_hidden(hidden_size , batch_size)
@@ -179,14 +175,15 @@ with torch.no_grad():
         x_s = []
         for _ in range(rnn_iterations):
             x, y, hidden = model(fn, x, y, hidden)
-            y_s.append(y.detach().cpu().numpy())
-            x_s.append(x.detach().cpu().numpy())
+            y_s.append(y.detach())
+            x_s.append(x.detach())
 
-        f_opt = f_opt.cpu().numpy()
-        x_opt = x_opt.cpu().numpy()
+        # Пересчет ошибок для батча
+        y_errors_batch = [torch.norm(f_opt - y, dim=1).mean().item() for y in y_s]  # Средняя ошибка по батчу для y
+        x_errors_batch = [torch.norm(x_opt - x, dim=1).mean().item() for x in x_s]  # Средняя ошибка по батчу для x
 
-        y_errors.append([np.linalg.norm(f_opt - y) for y in y_s])
-        x_errors.append([np.linalg.norm(x_opt - x) for x in x_s])
+        y_errors.append(y_errors_batch)
+        x_errors.append(x_errors_batch)
 
     for i in range(rnn_iterations):
         fig, axs = plt.subplots(2)

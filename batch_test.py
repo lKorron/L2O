@@ -8,23 +8,18 @@ from model import RNN
 class FN(nn.Module):
     def __init__(self, coef, x_opt, f_opt):
         super(FN, self).__init__()
-        self.coef = coef  # Предполагается размер [batch_size, dimension]
-        self.x_opt = x_opt  # Предполагается размер [batch_size, dimension]
-        self.f_opt = f_opt  # Предполагается размер [batch_size, 1]
+        self.coef = coef
+        self.x_opt = x_opt
+        self.f_opt = f_opt
 
     def forward(self, x):
-        # x: [batch_size, dimension]
-        # Вычисляем квадрат разности между x и x_opt
-        squared_diffs = (x - self.x_opt) ** 2  # [batch_size, dimension]
+        squared_diffs = (x - self.x_opt) ** 2
 
-        # Умножаем квадраты разности на соответствующие коэффициенты
-        weighted_diffs = squared_diffs * self.coef  # [batch_size, dimension]
+        weighted_diffs = squared_diffs * self.coef
 
-        # Суммируем полученные значения по последнему измерению для каждого x в батче
-        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)  # [batch_size, 1]
+        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)
 
-        # Добавляем f_opt к сумме для каждого x
-        result = sum_of_weighted_diffs + self.f_opt  # [batch_size, 1]
+        result = sum_of_weighted_diffs + self.f_opt
 
         return result
 
