@@ -22,14 +22,10 @@ class RNN(nn.Module):
         )
 
     def forward(self, fn, x, y, hidden):
-        x = x.view(1, -1)
-        y = y.view(1, -1)
-        hidden = hidden.view(1, -1)
-        
         combined = torch.cat((x, y, hidden), dim=1)
-        
+
         hidden = self.i2h(combined)
         x = self.i2o(combined)
-        y = fn(x.view(-1))
+        y = fn(x)
         return x, y, hidden
     

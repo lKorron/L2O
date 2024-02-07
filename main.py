@@ -61,7 +61,7 @@ class FN(nn.Module):
 
 
 def init_hidden(hidden_size):
-    return torch.randn(hidden_size, 1) * torch.sqrt(torch.tensor(1.0 / hidden_size))
+    return torch.randn(batch_size, hidden_size) * torch.sqrt(torch.tensor(1.0 / hidden_size))
 
 
 def generate_random_values():
@@ -99,6 +99,8 @@ rnn_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
 
+batch_size = 64
+
 model = RNN(input_size, hidden_size, 1)
 model = model.to(device)
 
@@ -120,6 +122,7 @@ for i in tqdm(range(1, dataset_size + 1)):
     fn = FN(coef, x_opt, f_opt)
     input = (x_initial, fn)
     target = torch.tensor(f_opt, dtype=torch.float32, requires_grad=True).to(device)
+
     loss = train(
         model, criterion, optimizer, input, target, hidden_size, rnn_iterations
     )
