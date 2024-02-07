@@ -66,7 +66,6 @@ def init_hidden(hidden_size):
 
 def generate_random_values():
     coef = torch.rand(DIMENSION) * 9 + 1
-
     x_opt = torch.rand(DIMENSION) * 10 - 5
     f_opt = torch.rand(1) * 10 - 5
     return coef, x_opt, f_opt
@@ -80,7 +79,8 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     x = x.to(device)
     y = fn(x)
     hidden = init_hidden(hidden_size).to(device)
-    total_loss = 0
+    total_loss = torch.tensor(0.)
+
     for _ in range(rnn_iterations):
         x, y, hidden = model(fn, x, y, hidden)
         loss = criterion(target, y)
