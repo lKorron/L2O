@@ -39,6 +39,19 @@ def generate_random_values(batch_size):
 
     return coef, x_opt, f_opt
 
+class IterationWeightedLoss(nn.Module):
+    def __init__(self, tet=0.9):
+        super().__init__()
+        self.tet = tet
+        self.iteration = 0
+
+    def forward(self, target, min_target):
+        self.iteration += 1
+        return (1 / (self.tet**self.iteration)) * torch.relu(
+            torch.dist(min_target, target)
+        )
+
+
 device = "cpu"
 
 
@@ -71,5 +84,3 @@ fn = FN(coef, x_opt, f_opt)
 y = fn(x)
 
 x, y, hidden = model(fn, x, y, hidden)
-
-print(x)

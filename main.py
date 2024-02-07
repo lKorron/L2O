@@ -47,38 +47,51 @@ class IterationWeightedLoss(nn.Module):
 
 class FN(nn.Module):
     def __init__(self, coef, x_opt, f_opt):
-        super().__init__()
-        self.coef = coef.to(device)
-        self.x_opt = x_opt.to(device)
-        self.f_opt = f_opt.to(device)
+        super(FN, self).__init__()
+        self.coef = coef  # Предполагается размер [batch_size, dimension]
+        self.x_opt = x_opt  # Предполагается размер [batch_size, dimension]
+        self.f_opt = f_opt  # Предполагается размер [batch_size, 1]
 
     def forward(self, x):
-        squared_diffs = (x - self.x_opt) ** 2
-        weighted_diffs = torch.mul(self.coef, squared_diffs)
-        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=-1)
-        result = sum_of_weighted_diffs + self.f_opt
+        # x: [batch_size, dimension]
+        # Вычисляем квадрат разности между x и x_opt
+        squared_diffs = (x - self.x_opt) ** 2  # [batch_size, dimension]
+
+        # Умножаем квадраты разности на соответствующие коэффициенты
+        weighted_diffs = squared_diffs * self.coef  # [batch_size, dimension]
+
+        # Суммируем полученные значения по последнему измерению для каждого x в батче
+        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)  # [batch_size, 1]
+
+        # Добавляем f_opt к сумме для каждого x
+        result = sum_of_weighted_diffs + self.f_opt  # [batch_size, 1]
+
         return result
 
 
-def init_hidden(hidden_size):
+def init_hidden(hidden_size, batch_size):
     return torch.randn(batch_size, hidden_size) * torch.sqrt(torch.tensor(1.0 / hidden_size))
 
 
-def generate_random_values():
-    coef = torch.rand(DIMENSION) * 9 + 1
-    x_opt = torch.rand(DIMENSION) * 10 - 5
-    f_opt = torch.rand(1) * 10 - 5
+def generate_random_values(batch_size):
+
+    coef = torch.rand(batch_size, DIMENSION) * 9 + 1
+    x_opt = torch.rand(batch_size, DIMENSION) * 10 - 5
+    f_opt = torch.rand(batch_size, 1) * 10 - 5
+
     return coef, x_opt, f_opt
 
 
 def train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations):
     model.train()
     optimizer.zero_grad()
+
     criterion = IterationWeightedLoss()
+
     x, fn = input
     x = x.to(device)
     y = fn(x)
-    hidden = init_hidden(hidden_size).to(device)
+    hidden = init_hidden(hidden_size, batch_size).to(device)
     total_loss = torch.tensor(0.)
 
     for _ in range(rnn_iterations):
@@ -86,9 +99,9 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
         loss = criterion(target, y)
         total_loss += loss
 
-    total_loss.backward()
+    (total_loss / batch_size).backward()
     optimizer.step()
-    return total_loss
+    return total_loss.item() / batch_size
 
 
 DIMENSION = 2
@@ -108,17 +121,17 @@ criterion = IterationWeightedLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
-dataset_size = 40000
+dataset_size = 8000
 
 losses = []
 summ = 0
 fig, ax = plt.subplots()
 loss_text = ax.text(0.8, 0.95, "", transform=ax.transAxes, verticalalignment="top")
 
-x_initial = torch.zeros(DIMENSION).to(device)
+x_initial = torch.zeros(batch_size, DIMENSION).to(device)
 
 for i in tqdm(range(1, dataset_size + 1)):
-    coef, x_opt, f_opt = generate_random_values()
+    coef, x_opt, f_opt = generate_random_values(batch_size)
     fn = FN(coef, x_opt, f_opt)
     input = (x_initial, fn)
     target = torch.tensor(f_opt, dtype=torch.float32, requires_grad=True).to(device)
@@ -126,7 +139,7 @@ for i in tqdm(range(1, dataset_size + 1)):
     loss = train(
         model, criterion, optimizer, input, target, hidden_size, rnn_iterations
     )
-    summ += loss.item()
+    summ += loss
     losses.append(summ / i)
 
     writer.add_scalar("Iteration weighted loss", summ / i, i)
@@ -157,7 +170,7 @@ with torch.no_grad():
         coef, x_opt, f_opt = generate_random_values()
         fn = FN(coef, x_opt, f_opt)
 
-        start_hidden = init_hidden(hidden_size)
+        start_hidden = init_hidden(hidden_size , batch_size)
 
         x = start_point.to(device)
         y = fn(x)
