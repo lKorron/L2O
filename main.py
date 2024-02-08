@@ -8,7 +8,7 @@ from model import RNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_3")
+writer = SummaryWriter("runs/2d_t1")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -152,8 +152,9 @@ for i in tqdm(range(1, train_iterations + 1)):
 # # plt.savefig(f"train_b_{losses[-1]:.3f}.png")
 # plt.show()
 
+test_batch_size = 64
 
-start_point = torch.zeros(batch_size, DIMENSION).to(device)
+start_point = torch.zeros(test_batch_size, DIMENSION).to(device)
 
 with torch.no_grad():
     test_iterations = 1200
@@ -163,10 +164,10 @@ with torch.no_grad():
     x_errors = []
 
     for _ in tqdm(range(test_iterations)):
-        coef, x_opt, f_opt = generate_random_values(batch_size)
+        coef, x_opt, f_opt = generate_random_values(test_batch_size)
         fn = FN(coef, x_opt, f_opt)
 
-        start_hidden = init_hidden(hidden_size , batch_size)
+        start_hidden = init_hidden(hidden_size , test_batch_size)
 
         x = start_point.to(device)
         y = fn(x)
