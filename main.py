@@ -4,11 +4,11 @@ from torch import nn
 from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
-from model import RNN
+from model import GRURNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_t1")
+writer = SummaryWriter("runs/2d_gru")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -64,8 +64,6 @@ class FN(nn.Module):
         return result
 
 
-def init_hidden(hidden_size, batch_size):
-    return torch.randn(batch_size, hidden_size) * torch.sqrt(torch.tensor(1.0 / hidden_size))
 
 
 def generate_random_values(batch_size):
@@ -86,7 +84,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     x, fn = input
     x = x.to(device)
     y = fn(x)
-    hidden = init_hidden(hidden_size, batch_size).to(device)
+    hidden = model.init_hidden(batch_size, device)
     total_loss = torch.tensor(0.)
 
     for _ in range(rnn_iterations):
@@ -109,7 +107,7 @@ learning_rate = 3e-4
 
 batch_size = 64
 
-model = RNN(input_size, hidden_size, 1)
+model = GRURNN(input_size, hidden_size, 1)
 model = model.to(device)
 
 criterion = IterationWeightedLoss()
@@ -167,7 +165,7 @@ with torch.no_grad():
         coef, x_opt, f_opt = generate_random_values(test_batch_size)
         fn = FN(coef, x_opt, f_opt)
 
-        start_hidden = init_hidden(hidden_size , test_batch_size)
+        start_hidden = model.init_hidden(test_batch_size, device)
 
         x = start_point.to(device)
         y = fn(x)
