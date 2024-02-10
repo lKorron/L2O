@@ -8,7 +8,7 @@ from model import GRURNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_gru")
+writer = SummaryWriter("runs/2d_gru_2")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -75,7 +75,7 @@ def generate_random_values(batch_size):
     return coef, x_opt, f_opt
 
 
-def train(model, criterion, optimizer, input, target, hidden_size, rnn_iterations):
+def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     model.train()
     optimizer.zero_grad()
 
@@ -97,7 +97,7 @@ def train(model, criterion, optimizer, input, target, hidden_size, rnn_iteration
     return total_loss.item() / batch_size
 
 
-DIMENSION = 2
+DIMENSION = 4
 input_size = DIMENSION + 1
 hidden_size = 64
 output_size = 1
@@ -105,17 +105,16 @@ rnn_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
 
-batch_size = 64
+batch_size = 256
 
 model = GRURNN(input_size, hidden_size, 1)
 model = model.to(device)
 
-criterion = IterationWeightedLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 # Размер выборки = итерации * раземер батча
-train_iterations = 8000
+train_iterations = 16000
 
 losses = []
 summ = 0
@@ -131,7 +130,7 @@ for i in tqdm(range(1, train_iterations + 1)):
     target = torch.tensor(f_opt, dtype=torch.float32, requires_grad=True).to(device)
 
     loss = train(
-        model, criterion, optimizer, input, target, hidden_size, rnn_iterations
+        model, optimizer, input, target, hidden_size, rnn_iterations
     )
     summ += loss
     losses.append(summ / i)
