@@ -2,9 +2,9 @@ import torch
 from torch import nn
 
 
-class GRURNN(nn.Module):
+class GRU(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers=1):
-        super(GRURNN, self).__init__()
+        super(GRU, self).__init__()
         self.hidden_size = hidden_size
         self.gru = nn.GRU(input_size, hidden_size, num_layers)  # Добавляем +1 для y
         self.i2o = nn.Sequential(
@@ -21,9 +21,10 @@ class GRURNN(nn.Module):
         output, hidden = self.gru(combined, hidden)
         output = output.squeeze(0)  # Удаляем измерение seq_len после GRU
         x = self.i2o(output)
-        y = fn(x)  # Убедитесь, что fn принимает x и возвращает [batch_size, 1]
+        y = fn(x)
         return x, y, hidden
 
     def init_hidden(self, batch_size, device):
         # Инициализация скрытого состояния для GRU
-        return torch.zeros(self.gru.num_layers, batch_size, self.hidden_size, device=device)
+        return (torch.zeros(self.gru.num_layers, batch_size, self.hidden_size, device=device) +
+                torch.randn(batch_size, self.hidden_size) * torch.sqrt(torch.tensor(1.0 / self.hidden_size)))

@@ -4,11 +4,11 @@ from torch import nn
 from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
-from model import GRURNN
+from model import GRU
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/2d_gru_2")
+writer = SummaryWriter("runs/4d_gru_2")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -107,14 +107,14 @@ learning_rate = 3e-4
 
 batch_size = 256
 
-model = GRURNN(input_size, hidden_size, 1)
+model = GRU(input_size, hidden_size, 1)
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 # Размер выборки = итерации * раземер батча
-train_iterations = 16000
+train_iterations = 8000
 
 losses = []
 summ = 0
