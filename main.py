@@ -8,7 +8,7 @@ from model import GRU
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/4d_gru_2")
+writer = SummaryWriter("runs/4d_gru_3")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -27,23 +27,6 @@ class IterationWeightedLoss(nn.Module):
         return (1 / (self.tet**self.iteration)) * torch.relu(
             torch.dist(min_target, target)
         )
-
-
-# class IterationWeightedLoss(nn.Module):
-#     def __init__(self, tet=0.9, delta=0.5):
-#         super().__init__()
-#         self.tet = tet
-#         self.iteration = 0
-#         self.delta = delta
-
-#     def forward(self, target, min_target):
-#         self.iteration += 1
-#         loss = torch.abs(min_target - target)
-#         condition = loss < self.delta
-#         squared_loss = 0.5 * loss ** 2
-#         linear_loss = self.delta * (loss - 0.5 * self.delta)
-#         return (1 / (self.tet**self.iteration)) * torch.where(condition, squared_loss, linear_loss)
-
 
 class FN(nn.Module):
     def __init__(self, coef, x_opt, f_opt):
@@ -96,6 +79,24 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     optimizer.step()
     return total_loss.item() / batch_size
 
+def validate(model, input, target, hidden_size, rnn_iterations):
+    model.eval()
+    criterion = IterationWeightedLoss()
+
+    with torch.no_grad():
+        x, fn = input
+        x = x.to(device)
+        y = fn(x)
+        hidden = model.init_hidden(batch_size, device)
+        total_loss = torch.tensor(0.)
+
+        for _ in range(rnn_iterations):
+            x, y, hidden = model(fn, x, y, hidden)
+            loss = criterion(target, y)
+            total_loss += loss
+
+        return total_loss.item() / batch_size
+
 
 DIMENSION = 4
 input_size = DIMENSION + 1
@@ -105,7 +106,7 @@ rnn_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
 
-batch_size = 256
+batch_size = 128
 
 model = GRU(input_size, hidden_size, 1)
 model = model.to(device)
@@ -113,8 +114,10 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
+
 # Размер выборки = итерации * раземер батча
-train_iterations = 8000
+train_iterations = 16000
+val_verbose = 100
 
 losses = []
 summ = 0
@@ -138,20 +141,20 @@ for i in tqdm(range(1, train_iterations + 1)):
     writer.add_scalar("Iteration weighted loss", summ / i, i)
 
     if i % verbose == 0:
-#         plt.plot(losses, color="blue")
-#         plt.title("Training loss")
-#         plt.xlabel("Iteration")
-#         plt.ylabel("Loss")
-#         loss_text.set_text(f"Loss: {losses[-1]:.3f}")
-#         plt.pause(0.05)
         scheduler.step(loss)
-#
-# # plt.savefig(f"train_b_{losses[-1]:.3f}.png")
-# plt.show()
+
+    if i % val_verbose == 0:
+        val_loss = validate(model, input, target, hidden_size, rnn_iterations)
+        writer.add_scalar("Loss/val", val_loss, i)
+
 
 test_batch_size = 64
 
 start_point = torch.zeros(test_batch_size, DIMENSION).to(device)
+
+first_iteration_x_median = 0
+last_iteration_x_median = 0
+
 
 with torch.no_grad():
     test_iterations = 1200
@@ -187,6 +190,12 @@ with torch.no_grad():
         fig, axs = plt.subplots(2)
         y_values = [y[i] for y in y_errors]
         x_values = [x[i] for x in x_errors]
+
+        if i == 0:
+            first_iteration_x_median = np.median(x_values)
+        if i == rnn_iterations - 1:
+            last_iteration_x_median = np.median(x_values)
+
         axs[0].hist(y_values, bins=50)
         axs[0].set_title(f"Y Errors at {i+1} iteration")
         axs[0].axvline(np.median(y_values), color="r", linestyle="dashed", linewidth=2)
@@ -247,6 +256,19 @@ with torch.no_grad():
         # plt.savefig(f"plot_b_{i+1}.png")
         writer.add_figure(f"Iteration {i + 1}", plt.gcf())
         # plt.show()
+
+
+
+writer.add_hparams({
+    'train_iterations': train_iterations,
+    'batch_size': batch_size,
+    'hidden_size': hidden_size,
+    'dimension': DIMENSION,
+    'rnn_iterations': rnn_iterations,
+    'learning_rate': learning_rate
+}, {'loss': losses[-1],
+    'first_iteration_x_median': first_iteration_x_median,
+    'last iteration_x_median': last_iteration_x_median})
 
 # median_y_errors = []
 # median_x_errors = []
