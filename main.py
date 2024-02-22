@@ -8,7 +8,7 @@ from model import GRU
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/4d_gru_3")
+writer = SummaryWriter("runs/100d")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -98,7 +98,7 @@ def validate(model, input, target, hidden_size, rnn_iterations):
         return total_loss.item() / batch_size
 
 
-DIMENSION = 4
+DIMENSION = 10
 input_size = DIMENSION + 1
 hidden_size = 64
 output_size = 1
@@ -124,7 +124,7 @@ summ = 0
 fig, ax = plt.subplots()
 loss_text = ax.text(0.8, 0.95, "", transform=ax.transAxes, verticalalignment="top")
 
-x_initial = torch.zeros(batch_size, DIMENSION).to(device)
+x_initial = torch.ones(batch_size, DIMENSION).to(device)
 
 for i in tqdm(range(1, train_iterations + 1)):
     coef, x_opt, f_opt = generate_random_values(batch_size)
@@ -150,7 +150,7 @@ for i in tqdm(range(1, train_iterations + 1)):
 
 test_batch_size = 64
 
-start_point = torch.zeros(test_batch_size, DIMENSION).to(device)
+start_point = torch.ones(test_batch_size, DIMENSION).to(device)
 
 first_iteration_x_median = 0
 last_iteration_x_median = 0
