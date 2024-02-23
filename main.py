@@ -5,10 +5,11 @@ from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 from model import GRU
+from transformer_model import AutoRegressiveTransformerModel as Tranfromer
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/100d")
+writer = SummaryWriter("runs/transformer")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -67,11 +68,12 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     x, fn = input
     x = x.to(device)
     y = fn(x)
-    hidden = model.init_hidden(batch_size, device)
+
     total_loss = torch.tensor(0.)
 
     for _ in range(rnn_iterations):
-        x, y, hidden = model(fn, x, y, hidden)
+        x = model(x, y)
+        y = fn(x)
         loss = criterion(target, y)
         total_loss += loss
 
@@ -79,26 +81,26 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     optimizer.step()
     return total_loss.item() / batch_size
 
-def validate(model, input, target, hidden_size, rnn_iterations):
-    model.eval()
-    criterion = IterationWeightedLoss()
+# def validate(model, input, target, hidden_size, rnn_iterations):
+#     model.eval()
+#     criterion = IterationWeightedLoss()
+#
+#     with torch.no_grad():
+#         x, fn = input
+#         x = x.to(device)
+#         y = fn(x)
+#         hidden = model.init_hidden(batch_size, device)
+#         total_loss = torch.tensor(0.)
+#
+#         for _ in range(rnn_iterations):
+#             x, y, hidden = model(fn, x, y, hidden)
+#             loss = criterion(target, y)
+#             total_loss += loss
+#
+#         return total_loss.item() / batch_size
 
-    with torch.no_grad():
-        x, fn = input
-        x = x.to(device)
-        y = fn(x)
-        hidden = model.init_hidden(batch_size, device)
-        total_loss = torch.tensor(0.)
 
-        for _ in range(rnn_iterations):
-            x, y, hidden = model(fn, x, y, hidden)
-            loss = criterion(target, y)
-            total_loss += loss
-
-        return total_loss.item() / batch_size
-
-
-DIMENSION = 10
+DIMENSION = 2
 input_size = DIMENSION + 1
 hidden_size = 64
 output_size = 1
@@ -106,17 +108,17 @@ rnn_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
 
-batch_size = 128
+batch_size = 64
 
-model = GRU(input_size, hidden_size, 1)
-model = model.to(device)
+model = Tranfromer(x_dimension=DIMENSION, model_dim=512, nhead=8, num_layers=6, dropout=0.1)
+# model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 
 # Размер выборки = итерации * раземер батча
-train_iterations = 16000
+train_iterations = 150
 val_verbose = 100
 
 losses = []
@@ -143,12 +145,12 @@ for i in tqdm(range(1, train_iterations + 1)):
     if i % verbose == 0:
         scheduler.step(loss)
 
-    if i % val_verbose == 0:
-        val_loss = validate(model, input, target, hidden_size, rnn_iterations)
-        writer.add_scalar("Loss/val", val_loss, i)
+    # if i % val_verbose == 0:
+    #     val_loss = validate(model, input, target, hidden_size, rnn_iterations)
+    #     writer.add_scalar("Loss/val", val_loss, i)
 
 
-test_batch_size = 64
+test_batch_size = 1
 
 start_point = torch.ones(test_batch_size, DIMENSION).to(device)
 
@@ -157,7 +159,7 @@ last_iteration_x_median = 0
 
 
 with torch.no_grad():
-    test_iterations = 1200
+    test_iterations = 500
     iter_sum = 0
 
     y_errors = []
@@ -167,15 +169,16 @@ with torch.no_grad():
         coef, x_opt, f_opt = generate_random_values(test_batch_size)
         fn = FN(coef, x_opt, f_opt)
 
-        start_hidden = model.init_hidden(test_batch_size, device)
 
         x = start_point.to(device)
         y = fn(x)
-        hidden = start_hidden.to(device)
+
+
         y_s = []
         x_s = []
         for _ in range(rnn_iterations):
-            x, y, hidden = model(fn, x, y, hidden)
+            x = model(x, y)
+            y = fn(x)
             y_s.append(y.detach())
             x_s.append(x.detach())
 
