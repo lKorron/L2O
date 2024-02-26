@@ -9,7 +9,7 @@ from transformer_model import AutoRegressiveTransformerModel as Tranfromer
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/transformer")
+writer = SummaryWriter("runs/transformer_10")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -59,7 +59,7 @@ def generate_random_values(batch_size):
     return coef, x_opt, f_opt
 
 
-def train(model, optimizer, input, target, hidden_size, rnn_iterations):
+def train(model, optimizer, input, target, opt_iterations):
     model.train()
     optimizer.zero_grad()
 
@@ -69,13 +69,33 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     x = x.to(device)
     y = fn(x)
 
+    xy_embeddings = []
+
+    x = model.x2embedding(x)
+    y = model.y2embedding(y)
+
+    combined = torch.cat((x,y), dim=1)
+
+    xy_embeddings.append(combined)
     total_loss = torch.tensor(0.)
 
-    for _ in range(rnn_iterations):
-        x = model(x, y)
-        y = fn(x)
-        loss = criterion(target, y)
+    for _ in range(opt_iterations):
+        input_sequence = torch.stack(xy_embeddings, dim=0)
+        positioned_sequence = model.positional_encoding(input_sequence)
+
+        new_x = model(positioned_sequence)
+        new_y = fn(new_x)
+
+        loss = criterion(target, new_y)
         total_loss += loss
+
+
+        new_x = model.x2embedding(new_x)
+        new_y = model.y2embedding(new_y)
+
+        combined = torch.cat((new_x, new_y), dim=1)
+        xy_embeddings.append(combined)
+
 
     (total_loss / batch_size).backward()
     optimizer.step()
@@ -100,17 +120,15 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
 #         return total_loss.item() / batch_size
 
 
-DIMENSION = 2
+DIMENSION = 10
 input_size = DIMENSION + 1
-hidden_size = 64
 output_size = 1
-rnn_iterations = 5
+opt_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
+batch_size = 256
 
-batch_size = 64
-
-model = Tranfromer(x_dimension=DIMENSION, model_dim=512, nhead=8, num_layers=6, dropout=0.1)
+model = Tranfromer(x_dimension=DIMENSION, model_dim=128, nhead=2, num_layers=4, dropout=0.1)
 # model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -118,8 +136,7 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 
 # Размер выборки = итерации * раземер батча
-train_iterations = 150
-val_verbose = 100
+train_iterations = 1000
 
 losses = []
 summ = 0
@@ -132,11 +149,9 @@ for i in tqdm(range(1, train_iterations + 1)):
     coef, x_opt, f_opt = generate_random_values(batch_size)
     fn = FN(coef, x_opt, f_opt)
     input = (x_initial, fn)
-    target = torch.tensor(f_opt, dtype=torch.float32, requires_grad=True).to(device)
+    target = f_opt
 
-    loss = train(
-        model, optimizer, input, target, hidden_size, rnn_iterations
-    )
+    loss = train(model, optimizer, input, target, opt_iterations)
     summ += loss
     losses.append(summ / i)
 
@@ -176,9 +191,26 @@ with torch.no_grad():
 
         y_s = []
         x_s = []
+
+        xy_embeddings = []
+        x_embedding = model.x2embedding(x)
+        y_embedding = model.y2embedding(y)
+        xy_embeddings.append(x_embedding)
+        xy_embeddings.append(y_embedding)
+
         for _ in range(rnn_iterations):
-            x = model(x, y)
-            y = fn(x)
+            input_sequence = torch.stack(xy_embeddings, dim=0)
+            positioned_sequence = model.positional_encoding(input_sequence)
+
+            new_x = model(positioned_sequence)
+            new_y = fn(new_x)
+
+            new_x_embedding = model.x2embedding(new_x)
+            new_y_embedding = model.y2embedding(new_y)
+
+            xy_embeddings.append(new_x_embedding)
+            xy_embeddings.append(new_y_embedding)
+
             y_s.append(y.detach())
             x_s.append(x.detach())
 
