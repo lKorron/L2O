@@ -5,10 +5,11 @@ from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 from model import GRU
+from transformer_model import AutoRegressiveTransformerModel as Tranfromer
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter("runs/100d")
+writer = SummaryWriter("runs/transformer_10")
 
 matplotlib.use("TkAgg")
 plt.style.use("fast")
@@ -58,7 +59,7 @@ def generate_random_values(batch_size):
     return coef, x_opt, f_opt
 
 
-def train(model, optimizer, input, target, hidden_size, rnn_iterations):
+def train(model, optimizer, input, target, opt_iterations):
     model.train()
     optimizer.zero_grad()
 
@@ -67,57 +68,69 @@ def train(model, optimizer, input, target, hidden_size, rnn_iterations):
     x, fn = input
     x = x.to(device)
     y = fn(x)
-    hidden = model.init_hidden(batch_size, device)
+
+    xy_embeddings = []
+
+
+    combined = torch.cat((x,y), dim=1)
+
+    xy_embeddings.append(combined)
     total_loss = torch.tensor(0.)
 
-    for _ in range(rnn_iterations):
-        x, y, hidden = model(fn, x, y, hidden)
-        loss = criterion(target, y)
+    for _ in range(opt_iterations):
+        input_sequence = torch.stack(xy_embeddings, dim=0)
+        positioned_sequence = model.positional_encoding(input_sequence)
+
+        new_x = model(positioned_sequence)
+        new_y = fn(new_x)
+
+        loss = criterion(target, new_y)
         total_loss += loss
+
+        combined = torch.cat((new_x, new_y), dim=1)
+        xy_embeddings.append(combined)
+
 
     (total_loss / batch_size).backward()
     optimizer.step()
     return total_loss.item() / batch_size
 
-def validate(model, input, target, hidden_size, rnn_iterations):
-    model.eval()
-    criterion = IterationWeightedLoss()
+# def validate(model, input, target, hidden_size, rnn_iterations):
+#     model.eval()
+#     criterion = IterationWeightedLoss()
+#
+#     with torch.no_grad():
+#         x, fn = input
+#         x = x.to(device)
+#         y = fn(x)
+#         hidden = model.init_hidden(batch_size, device)
+#         total_loss = torch.tensor(0.)
+#
+#         for _ in range(rnn_iterations):
+#             x, y, hidden = model(fn, x, y, hidden)
+#             loss = criterion(target, y)
+#             total_loss += loss
+#
+#         return total_loss.item() / batch_size
 
-    with torch.no_grad():
-        x, fn = input
-        x = x.to(device)
-        y = fn(x)
-        hidden = model.init_hidden(batch_size, device)
-        total_loss = torch.tensor(0.)
 
-        for _ in range(rnn_iterations):
-            x, y, hidden = model(fn, x, y, hidden)
-            loss = criterion(target, y)
-            total_loss += loss
-
-        return total_loss.item() / batch_size
-
-
-DIMENSION = 10
+DIMENSION = 9
 input_size = DIMENSION + 1
-hidden_size = 64
 output_size = 1
-rnn_iterations = 5
+opt_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
-
 batch_size = 128
 
-model = GRU(input_size, hidden_size, 1)
-model = model.to(device)
+model = Tranfromer(x_dimension=DIMENSION, model_dim=10, nhead=1, num_layers=2, dropout=0.1)
+# model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 
 # Размер выборки = итерации * раземер батча
-train_iterations = 16000
-val_verbose = 100
+train_iterations = 1000
 
 losses = []
 summ = 0
@@ -130,11 +143,9 @@ for i in tqdm(range(1, train_iterations + 1)):
     coef, x_opt, f_opt = generate_random_values(batch_size)
     fn = FN(coef, x_opt, f_opt)
     input = (x_initial, fn)
-    target = torch.tensor(f_opt, dtype=torch.float32, requires_grad=True).to(device)
+    target = f_opt
 
-    loss = train(
-        model, optimizer, input, target, hidden_size, rnn_iterations
-    )
+    loss = train(model, optimizer, input, target, opt_iterations)
     summ += loss
     losses.append(summ / i)
 
@@ -143,12 +154,12 @@ for i in tqdm(range(1, train_iterations + 1)):
     if i % verbose == 0:
         scheduler.step(loss)
 
-    if i % val_verbose == 0:
-        val_loss = validate(model, input, target, hidden_size, rnn_iterations)
-        writer.add_scalar("Loss/val", val_loss, i)
+    # if i % val_verbose == 0:
+    #     val_loss = validate(model, input, target, hidden_size, rnn_iterations)
+    #     writer.add_scalar("Loss/val", val_loss, i)
 
 
-test_batch_size = 64
+test_batch_size = 1
 
 start_point = torch.ones(test_batch_size, DIMENSION).to(device)
 
@@ -157,7 +168,7 @@ last_iteration_x_median = 0
 
 
 with torch.no_grad():
-    test_iterations = 1200
+    test_iterations = 500
     iter_sum = 0
 
     y_errors = []
@@ -167,17 +178,43 @@ with torch.no_grad():
         coef, x_opt, f_opt = generate_random_values(test_batch_size)
         fn = FN(coef, x_opt, f_opt)
 
-        start_hidden = model.init_hidden(test_batch_size, device)
 
         x = start_point.to(device)
         y = fn(x)
-        hidden = start_hidden.to(device)
+
+
         y_s = []
         x_s = []
-        for _ in range(rnn_iterations):
-            x, y, hidden = model(fn, x, y, hidden)
-            y_s.append(y.detach())
-            x_s.append(x.detach())
+
+        xy_embeddings = []
+
+        combined = torch.cat((x, y), dim=1)
+        xy_embeddings.append(combined)
+
+        # x_embedding = model.x2embedding(x)
+        # y_embedding = model.y2embedding(y)
+        # xy_embeddings.append(x_embedding)
+        # xy_embeddings.append(y_embedding)
+
+        for _ in range(opt_iterations):
+            input_sequence = torch.stack(xy_embeddings, dim=0)
+            positioned_sequence = model.positional_encoding(input_sequence)
+
+            new_x = model(positioned_sequence)
+            new_y = fn(new_x)
+
+            # new_x_embedding = model.x2embedding(new_x)
+            # new_y_embedding = model.y2embedding(new_y)
+            #
+            # xy_embeddings.append(new_x_embedding)
+            # xy_embeddings.append(new_y_embedding)
+
+            combined = torch.cat((new_x, new_y), dim=1)
+            xy_embeddings.append(combined)
+
+
+            y_s.append(new_y.detach())
+            x_s.append(new_x.detach())
 
         # Пересчет ошибок для батча
         y_errors_batch = [torch.norm(f_opt - y, dim=1).mean().item() for y in y_s]  # Средняя ошибка по батчу для y
@@ -186,14 +223,14 @@ with torch.no_grad():
         y_errors.append(y_errors_batch)
         x_errors.append(x_errors_batch)
 
-    for i in range(rnn_iterations):
+    for i in range(opt_iterations):
         fig, axs = plt.subplots(2)
         y_values = [y[i] for y in y_errors]
         x_values = [x[i] for x in x_errors]
 
         if i == 0:
             first_iteration_x_median = np.median(x_values)
-        if i == rnn_iterations - 1:
+        if i == opt_iterations - 1:
             last_iteration_x_median = np.median(x_values)
 
         axs[0].hist(y_values, bins=50)
@@ -262,9 +299,7 @@ with torch.no_grad():
 writer.add_hparams({
     'train_iterations': train_iterations,
     'batch_size': batch_size,
-    'hidden_size': hidden_size,
     'dimension': DIMENSION,
-    'rnn_iterations': rnn_iterations,
     'learning_rate': learning_rate
 }, {'loss': losses[-1],
     'first_iteration_x_median': first_iteration_x_median,
