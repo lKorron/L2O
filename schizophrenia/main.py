@@ -8,7 +8,7 @@ import wandb
 from model import RNN
 from functions import F1, F2, F3, F4, F5, F6, F7, F8, F9
 from config import config
-
+from transformer_model import AutoRegressiveTransformerModel as Tranfromer
 
 wandb.login()
 
@@ -39,17 +39,29 @@ def train(model, criterion, optimizer, x, fn_s, target, hidden_size, rnn_iterati
     model.train()
     optimizer.zero_grad()
     criterion = IterationWeightedLoss()
-    x_stacked = [fn(args) for fn, args in zip(fn_s, x.unbind(-1))]
-    y = torch.stack(x_stacked).to(device).unsqueeze(1).transpose(0, 1)
-    hidden = model.init_hidden(hidden_size, batch_size)
+    y_stacked = [fn(args) for fn, args in zip(fn_s, x.unbind(-1))]
+    y = torch.stack(y_stacked).to(device).unsqueeze(1).transpose(0, 1)
+
+    xy_embeddings = []
+    combined = torch.cat((x, y), dim=0).transpose(0, 1)
+    xy_embeddings.append(combined)
+
     total_loss = torch.tensor([0.0]).to(device)
     # normalization ?
     for iter in range(rnn_iterations):
-        x, hidden = model(x, y, hidden)
-        x_stacked = [fn(args) for fn, args in zip(fn_s, x.unbind(-1))]
-        y = torch.stack(x_stacked).to(device).unsqueeze(1).transpose(0, 1)
+        input_sequence = torch.stack(xy_embeddings, dim=0)
+        positioned_sequence = model.positional_encoding(input_sequence)
+
+        x = model(positioned_sequence).transpose(0, 1)
+        y_stacked = [fn(args) for fn, args in zip(fn_s, x.unbind(-1))]
+        y = torch.stack(y_stacked).to(device).unsqueeze(1).transpose(0, 1)
+
+        combined = torch.cat((x, y), dim=0).transpose(0, 1)
+        xy_embeddings.append(combined)
+
         loss = criterion(target, y)
         total_loss += loss
+
     (total_loss / batch_size).backward()
     optimizer.step()
     return total_loss / batch_size, y
@@ -60,14 +72,16 @@ batch_size = config["batch"]
 rnn_iterations = config["iteration"]
 hidden_size = config["hidden"]
 
-dataset_size = 10000
-DIMENTION = 1
+DIMENTION = 3
 verbose = 1000
 
 input_size = DIMENTION + 1
 output_size = DIMENTION
 
 model = RNN(input_size, hidden_size, output_size)
+model = Tranfromer(
+    x_dimension=DIMENTION, model_dim=input_size, nhead=1, num_layers=2, dropout=0.1
+)
 model = model.to(device)
 
 criterion = IterationWeightedLoss()
@@ -83,15 +97,11 @@ x_initial = torch.ones(DIMENTION, batch_size).to(device)
 functions = [F2, F4]
 probabilities = [1 / len(functions)] * len(functions)
 
-batches = []
-for _ in range(dataset_size // batch_size):
-    fn_batch = np.random.choice(functions, batch_size, replace=True, p=probabilities)
-    fn_batch = [fn() for fn in fn_batch]
-    target = torch.stack([fn.generate(DIMENTION) for fn in fn_batch]).to(device)
-    batches.append((fn_batch, target))
+dataset_size = 10000
 
 fn_df = np.random.choice(functions, dataset_size, replace=True, p=probabilities)
 fn_df = [fn() for fn in fn_df]
+target_df = [fn.generate(DIMENTION) for fn in fn_df]
 
 valid_dataset_size = 10000
 
@@ -107,7 +117,7 @@ for _ in range(valid_dataset_size // batch_size):
     valid_batches.append((val_fn_batch, val_target))
 
 num_epochs = 100
-patience = 10  # Number of epochs to wait before stopping
+patience = 30  # Number of epochs to wait before stopping
 
 best_val_loss = float("inf")  # Initialize the best validation loss to infinity
 epochs_no_improve = 0
@@ -116,8 +126,10 @@ for epoch in range(num_epochs):
     epoch_loss_summ = 0
     epoch_y_loss_summ = 0
     for i in tqdm(range(1, batch_size + 1)):
-        fn_batch = np.random.choice(fn_df, batch_size, replace=True)
-        target = torch.stack([fn.generate(DIMENTION) for fn in fn_batch]).to(device)
+        fn_batch_indices = np.random.choice(len(fn_df), batch_size, replace=True)
+        fn_batch = [fn_df[i] for i in fn_batch_indices]
+        target_batch = [target_df[i] for i in fn_batch_indices]
+        target = torch.stack(target_batch).to(device)
         # create batch
         loss, last_y = train(
             model,
@@ -133,13 +145,13 @@ for epoch in range(num_epochs):
         y_loss_summ += torch.sum((last_y - target)).item()
         epoch_loss_summ += loss.item()
         epoch_y_loss_summ += torch.sum((last_y - target)).item()
-        wandb.log({"loss": summ / i + epoch * len(batches)})
-        wandb.log({"y loss": y_loss_summ / ((i + epoch * len(batches)) * batch_size)})
+        wandb.log({"loss": summ / i + epoch * batch_size})
+        wandb.log({"y loss": y_loss_summ / ((i + epoch * batch_size) * batch_size)})
 
     wandb.log(
         {
-            "avg_loss": epoch_loss_summ / len(batches),
-            "avg_y_loss": epoch_y_loss_summ / (len(batches) * batch_size),
+            "avg_loss": epoch_loss_summ / batch_size,
+            "avg_y_loss": epoch_y_loss_summ / (batch_size * batch_size),
         }
     )
 
@@ -149,16 +161,27 @@ for epoch in range(num_epochs):
         for i, (val_fn_batch, val_target) in enumerate(tqdm(valid_batches), start=1):
             criterion = IterationWeightedLoss()
             x = x_initial.clone().detach()
-            x_stacked = [fn(args) for fn, args in zip(val_fn_batch, x.unbind(-1))]
-            y = torch.stack(x_stacked).to(device).unsqueeze(1).transpose(0, 1)
-            hidden = model.init_hidden(hidden_size, batch_size)
+            y_stacked = [fn(args) for fn, args in zip(val_fn_batch, x.unbind(-1))]
+            y = torch.stack(y_stacked).to(device).unsqueeze(1).transpose(0, 1)
+
+            xy_embeddings = []
+            combined = torch.cat((x, y), dim=0).transpose(0, 1)
+            xy_embeddings.append(combined)
+
             total_loss = torch.tensor([0.0]).to(device)
             for iter in range(rnn_iterations):
-                x, hidden = model(x, y, hidden)
-                x_stacked = [fn(args) for fn, args in zip(val_fn_batch, x.unbind(-1))]
-                y = torch.stack(x_stacked).to(device).unsqueeze(1).transpose(0, 1)
-                loss = criterion(val_target, y)
+                input_sequence = torch.stack(xy_embeddings, dim=0)
+                positioned_sequence = model.positional_encoding(input_sequence)
+                x = model(positioned_sequence).transpose(0, 1)
+                y_stacked = [fn(args) for fn, args in zip(val_fn_batch, x.unbind(-1))]
+                y = torch.stack(y_stacked).to(device).unsqueeze(1).transpose(0, 1)
+
+                combined = torch.cat((x, y), dim=0).transpose(0, 1)
+                xy_embeddings.append(combined)
+
+                loss = criterion(target, y)
                 total_loss += loss
+
             val_loss += (total_loss / batch_size).item()
 
     avg_val_loss = val_loss / len(valid_batches)
