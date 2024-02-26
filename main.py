@@ -71,8 +71,6 @@ def train(model, optimizer, input, target, opt_iterations):
 
     xy_embeddings = []
 
-    x = model.x2embedding(x)
-    y = model.y2embedding(y)
 
     combined = torch.cat((x,y), dim=1)
 
@@ -88,10 +86,6 @@ def train(model, optimizer, input, target, opt_iterations):
 
         loss = criterion(target, new_y)
         total_loss += loss
-
-
-        new_x = model.x2embedding(new_x)
-        new_y = model.y2embedding(new_y)
 
         combined = torch.cat((new_x, new_y), dim=1)
         xy_embeddings.append(combined)
@@ -120,15 +114,15 @@ def train(model, optimizer, input, target, opt_iterations):
 #         return total_loss.item() / batch_size
 
 
-DIMENSION = 10
+DIMENSION = 9
 input_size = DIMENSION + 1
 output_size = 1
 opt_iterations = 5
 verbose = 1000
 learning_rate = 3e-4
-batch_size = 256
+batch_size = 128
 
-model = Tranfromer(x_dimension=DIMENSION, model_dim=128, nhead=2, num_layers=4, dropout=0.1)
+model = Tranfromer(x_dimension=DIMENSION, model_dim=10, nhead=1, num_layers=2, dropout=0.1)
 # model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -193,26 +187,34 @@ with torch.no_grad():
         x_s = []
 
         xy_embeddings = []
-        x_embedding = model.x2embedding(x)
-        y_embedding = model.y2embedding(y)
-        xy_embeddings.append(x_embedding)
-        xy_embeddings.append(y_embedding)
 
-        for _ in range(rnn_iterations):
+        combined = torch.cat((x, y), dim=1)
+        xy_embeddings.append(combined)
+
+        # x_embedding = model.x2embedding(x)
+        # y_embedding = model.y2embedding(y)
+        # xy_embeddings.append(x_embedding)
+        # xy_embeddings.append(y_embedding)
+
+        for _ in range(opt_iterations):
             input_sequence = torch.stack(xy_embeddings, dim=0)
             positioned_sequence = model.positional_encoding(input_sequence)
 
             new_x = model(positioned_sequence)
             new_y = fn(new_x)
 
-            new_x_embedding = model.x2embedding(new_x)
-            new_y_embedding = model.y2embedding(new_y)
+            # new_x_embedding = model.x2embedding(new_x)
+            # new_y_embedding = model.y2embedding(new_y)
+            #
+            # xy_embeddings.append(new_x_embedding)
+            # xy_embeddings.append(new_y_embedding)
 
-            xy_embeddings.append(new_x_embedding)
-            xy_embeddings.append(new_y_embedding)
+            combined = torch.cat((new_x, new_y), dim=1)
+            xy_embeddings.append(combined)
 
-            y_s.append(y.detach())
-            x_s.append(x.detach())
+
+            y_s.append(new_y.detach())
+            x_s.append(new_x.detach())
 
         # Пересчет ошибок для батча
         y_errors_batch = [torch.norm(f_opt - y, dim=1).mean().item() for y in y_s]  # Средняя ошибка по батчу для y
@@ -221,14 +223,14 @@ with torch.no_grad():
         y_errors.append(y_errors_batch)
         x_errors.append(x_errors_batch)
 
-    for i in range(rnn_iterations):
+    for i in range(opt_iterations):
         fig, axs = plt.subplots(2)
         y_values = [y[i] for y in y_errors]
         x_values = [x[i] for x in x_errors]
 
         if i == 0:
             first_iteration_x_median = np.median(x_values)
-        if i == rnn_iterations - 1:
+        if i == opt_iterations - 1:
             last_iteration_x_median = np.median(x_values)
 
         axs[0].hist(y_values, bins=50)
@@ -297,9 +299,7 @@ with torch.no_grad():
 writer.add_hparams({
     'train_iterations': train_iterations,
     'batch_size': batch_size,
-    'hidden_size': hidden_size,
     'dimension': DIMENSION,
-    'rnn_iterations': rnn_iterations,
     'learning_rate': learning_rate
 }, {'loss': losses[-1],
     'first_iteration_x_median': first_iteration_x_median,
