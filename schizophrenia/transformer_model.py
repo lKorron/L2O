@@ -26,7 +26,6 @@ class AutoRegressiveTransformerModel(nn.Module):
 
     def forward(self, seq):
 
-
         output = self.transformer_block(seq)
         output = self.output_layer(output[-1])
 

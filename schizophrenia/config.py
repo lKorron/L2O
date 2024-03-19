@@ -1,6 +1,6 @@
 config = {
     "lr": 3e-4,
-    "batch": 64,
+    "batch": 128,
     "hidden": 128,
-    "iteration": 3,
+    "iteration": 5,
     }

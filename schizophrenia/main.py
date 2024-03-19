@@ -9,6 +9,9 @@ from model import RNN
 from functions import F1, F2, F3, F4, F5, F6, F7, F8, F9
 from config import config
 from transformer_model import AutoRegressiveTransformerModel as Tranfromer
+from torch.utils.tensorboard import SummaryWriter
+
+# writer = SummaryWriter("runs/transformer_gen")
 
 wandb.login()
 
@@ -79,9 +82,9 @@ input_size = DIMENTION + 1
 output_size = DIMENTION
 
 model = RNN(input_size, hidden_size, output_size)
-model = Tranfromer(
-    x_dimension=DIMENTION, model_dim=input_size, nhead=1, num_layers=2, dropout=0.1
-)
+# model = Tranfromer(
+#     x_dimension=DIMENTION, model_dim=input_size, nhead=2, num_layers=5, dropout=0.1
+# )
 model = model.to(device)
 
 criterion = IterationWeightedLoss()
@@ -122,9 +125,15 @@ patience = 30  # Number of epochs to wait before stopping
 best_val_loss = float("inf")  # Initialize the best validation loss to infinity
 epochs_no_improve = 0
 
+overall_sum = 0
+
+last_loss = 0
+
 for epoch in range(num_epochs):
     epoch_loss_summ = 0
     epoch_y_loss_summ = 0
+
+
     for i in tqdm(range(1, batch_size + 1)):
         fn_batch_indices = np.random.choice(len(fn_df), batch_size, replace=True)
         fn_batch = [fn_df[i] for i in fn_batch_indices]
@@ -142,11 +151,24 @@ for epoch in range(num_epochs):
             rnn_iterations,
         )
         summ += loss.item()
+        overall_sum += loss.item()
+
         y_loss_summ += torch.sum((last_y - target)).item()
         epoch_loss_summ += loss.item()
         epoch_y_loss_summ += torch.sum((last_y - target)).item()
-        wandb.log({"loss": summ / i + epoch * batch_size})
-        wandb.log({"y loss": y_loss_summ / ((i + epoch * batch_size) * batch_size)})
+
+        # wandb.log({"loss": summ / (i + epoch * batch_size)})
+        # wandb.log({"y loss": y_loss_summ / ((i + epoch * batch_size) * batch_size)})
+
+        # writer.add_scalar("Overall loss", overall_sum / (i + epoch * batch_size), i + epoch * batch_size)
+        # writer.add_scalar(f"Epoch {epoch + 1} loss", summ / i, i)
+
+
+
+    # writer.add_scalar("Overall loss", overall_sum / ((epoch + 1) * batch_size), epoch + 1)
+    print(f"loss {overall_sum / ((epoch + 1) * batch_size)}")
+
+
 
     wandb.log(
         {

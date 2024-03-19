@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 
-
 class GRU(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers=1):
         super(GRU, self).__init__()
