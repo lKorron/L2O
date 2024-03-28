@@ -1,0 +1,168 @@
+{
+    "os": "Linux-6.5.0-26-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2024-03-28T12:39:08.144723",
+    "startedAt": "2024-03-28T12:39:07.151381",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/linreg/L2O/shiz_2/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "shiz_2/main.py",
+    "git": {
+        "remote": "https://github.com/lKorron/L2O.git",
+        "commit": "6617d85c96a1ce6d0fbbeaa0b9c2eb2256a96a15"
+    },
+    "email": "maks.semyonov.2004@gmail.com",
+    "root": "/home/linreg/L2O",
+    "host": "linreg",
+    "username": "linreg",
+    "executable": "/bin/python3",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 1714.4479166666667,
+        "min": 800.0,
+        "max": 4354.166666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2040.642,
+            "min": 800.0,
+            "max": 2100.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2846.727,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3217.265,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3298.14,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2788.05,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 3149.586,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2073.449,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2299.135,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2821.881,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3209.518,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1280.592,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 976.302,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1417.56,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1392.49,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 91.9066047668457,
+            "used": 78.40608978271484
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 15.317039489746094
+    }
+}
