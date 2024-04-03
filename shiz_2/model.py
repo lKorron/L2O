@@ -48,12 +48,12 @@ class RNNCell(nn.Module):
         # self.h0 = torch.randn((hidden_size))
 
     def forward(self, x, y, h=None):
-        input_x = torch.cat((x, y), dim=0).transpose(0, 1)
+        input_x = torch.cat((x, y), dim=1)
         if h is None:
             h = torch.randn((input_x.size(0), self.hidden))
         h = h.to(device)
         h = self.rnn_cell(input_x, h)
-        return self.h2o(h).transpose(0, 1), h
+        return self.h2o(h), h
 
     def init_hidden(self, batch_size, device):
         return None

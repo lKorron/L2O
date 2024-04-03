@@ -23,10 +23,10 @@ class F1(nn.Module):
         self.x_opt = None
 
     def forward(self, x):
-        return torch.sum(torch.abs(torch.sin(x - self.x_opt)), dim=0).unsqueeze(0)
+        return torch.sum(torch.abs(torch.sin(x - self.x_opt)), dim=1).unsqueeze(1)
 
-    def generate(self, dimention: int, batch_size: int) -> torch.Tensor:
-        self.x_opt = torch.rand(dimention, batch_size) * 20 - 10
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension) * 20 - 10
         self.x_opt = self.x_opt.to(device)
         return self.forward(self.x_opt)
 
@@ -38,10 +38,10 @@ class F4(nn.Module):
         self.x_opt = None
 
     def forward(self, x):
-        return torch.sum((x - self.x_opt) ** 2, dim=0).unsqueeze(0)
+        return torch.sum((x - self.x_opt) ** 2, dim=1).unsqueeze(1)
 
-    def generate(self, dimention: int, batch_size: int) -> torch.Tensor:
-        self.x_opt = torch.rand(dimention, batch_size) * 100 - 50
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension) * 100 - 50
         self.x_opt = self.x_opt.to(device)
         return self.forward(self.x_opt)
 
