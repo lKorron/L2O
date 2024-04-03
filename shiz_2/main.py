@@ -21,7 +21,7 @@ class IterationWeightedLoss(nn.Module):
         super().__init__()
         self.tet = tet
         self.iteration = 0
-        self.weights = [0.0, 0.0, 0.0, 0.0, 0.01, 0.05, 0.1, 0.5, 5]
+        self.weights = [0.0, 0.0, 0.01, 0.05, 0.5, 0.5, 1, 1, 5]
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
@@ -96,7 +96,7 @@ for _ in range(test_size):
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
-patience = 50
+patience = 100
 best_val_loss = float("inf")
 epochs_no_improve = 0
 
