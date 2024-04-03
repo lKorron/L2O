@@ -4,7 +4,6 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# TODO inheritence
 class Function(nn.Module):
     def __init__(self):
         super().__init__()
@@ -36,13 +35,17 @@ class F4(nn.Module):
     def __init__(self):
         super().__init__()
         self.x_opt = None
+        self.coefs = None
 
     def forward(self, x):
-        return torch.sum((x - self.x_opt) ** 2, dim=1).unsqueeze(1)
+        scaled_diffs = torch.mul((x - self.x_opt) ** 2, self.coefs)
+        return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
         self.x_opt = torch.rand(batch_size, dimension) * 100 - 50
         self.x_opt = self.x_opt.to(device)
+        self.coefs = torch.rand(batch_size, dimension) * 10
+
         return self.forward(self.x_opt)
 
 
