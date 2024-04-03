@@ -21,7 +21,7 @@ class IterationWeightedLoss(nn.Module):
         super().__init__()
         self.tet = tet
         self.iteration = 0
-        self.weights = [0.0, 0.0, 0.0, 0.05, 0.1, 5]
+        self.weights = [0.0, 0.0, 0.0, 0.0, 0.01, 0.05, 0.1, 0.5, 5]
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
@@ -42,7 +42,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 
     for _ in range(opt_iterations):
         new_x, hidden = model(x, y, hidden)
-        # print(new_x)
+
         new_y = fn(new_x)
         x = new_x
         y = new_y
@@ -57,7 +57,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     return total_loss / batch_size
 
 
-DIMENSION = 2
+DIMENSION = 4
 input_size = DIMENSION + 1
 output_size = DIMENSION
 opt_iterations = 2 * DIMENSION + 1

@@ -45,6 +45,7 @@ class FN(nn.Module):
 
         result = sum_of_weighted_diffs + self.f_opt
 
+
         return result
 
 
