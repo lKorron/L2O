@@ -31,7 +31,6 @@ class IterationWeightedLoss(nn.Module):
 
 def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
-    optimizer.zero_grad()
     criterion = IterationWeightedLoss()
 
     x = x.clone().detach().to(device)
