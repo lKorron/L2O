@@ -96,7 +96,7 @@ for _ in range(test_size):
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
-patience = 100
+patience = 50
 best_val_loss = float("inf")
 epochs_no_improve = 0
 
