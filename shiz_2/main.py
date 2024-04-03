@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from functions import F4
+from functions import F4, F1
 from model import RNN, GRU, LSTM, MLP, CustomRNN, RNNCell
 from config import config
 import matplotlib.pyplot as plt
@@ -21,17 +21,16 @@ class IterationWeightedLoss(nn.Module):
         super().__init__()
         self.tet = tet
         self.iteration = 0
-        self.weights = [0.0, 0.0, 0.0, 0.0, 0.01, 0.05, 0.1, 0.5, 5]
+        self.weights = [0.0, 0.0, 0.01, 0.05, 0.5, 0.5, 1, 1, 5]
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
-        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=1)
+        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
         # return (1 / (self.tet**self.iteration)) * (finded_y - best_y).mean(dim=1)
 
 
 def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
-    optimizer.zero_grad()
     criterion = IterationWeightedLoss()
 
     x = x.clone().detach().to(device)
@@ -69,11 +68,7 @@ num_epoch = config["epoch"]  # количество эпох
 test_size = 1000  # количество тестовых функций
 test_batch_size = 1
 
-model = GRU(input_size, config["hidden"])
 model = RNNCell(input_size, config["hidden"])
-# model = CustomRNN(input_size, config["hidden"])
-# model = LSTM(input_size, config["hidden"])
-# model = MLP(input_size, config["hidden"])
 model = model.to(device)
 
 # инфа по градиентам
@@ -88,20 +83,20 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 train_data = []
 for _ in range(num_batches):
     fn = F4()
-    train_data.append((fn, fn.generate(DIMENSION, batch_size)))
+    train_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 val_data = []
 for _ in range(num_batches):
     fn = F4()
-    val_data.append((fn, fn.generate(DIMENSION, batch_size)))
+    val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 test_data = []
 for _ in range(test_size):
     fn = F4()
-    test_data.append((fn, fn.generate(DIMENSION, test_batch_size)))
+    test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
-patience = 50
+patience = 100
 best_val_loss = float("inf")
 epochs_no_improve = 0
 
@@ -109,7 +104,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial = torch.ones(DIMENSION, batch_size).to(device)
+x_initial = torch.ones(batch_size, DIMENSION).to(device)
 
 for epoch in range(num_epoch):
     # train
@@ -170,7 +165,7 @@ for epoch in range(num_epoch):
 # test
 model.load_state_dict(torch.load("best_model.pth"))
 
-x_initial = torch.ones(DIMENSION, test_batch_size).to(device)
+x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
 
 x_axis = []
 y_axis = []
