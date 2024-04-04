@@ -42,10 +42,8 @@ class F4(nn.Module):
         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension) * 100 - 50
-        self.x_opt = self.x_opt.to(device)
-        self.coefs = torch.rand(batch_size, dimension) * 10
-
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.coefs = torch.rand(batch_size, dimension, device=device) * 10
         return self.forward(self.x_opt)
 
 
