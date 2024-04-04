@@ -59,7 +59,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     return total_loss / batch_size
 
 
-DIMENSION = 1
+DIMENSION = 4
 input_size = DIMENSION + 1
 output_size = DIMENSION
 opt_iterations = 2 * DIMENSION + 1
@@ -100,7 +100,7 @@ for _ in range(test_size):
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
-patience = 200
+patience = 500
 best_val_loss = float("inf")
 epochs_no_improve = 0
 
@@ -213,4 +213,5 @@ fig, ax = plt.subplots(figsize=(20, 5))
 gfg = sns.boxplot(x="Iteration", y="Loss (y_i - y_best)", data=loss_df, ax=ax)
 gfg.set_ylim(0, 10000)
 plt.title("Boxplot of Losses by Optimization Iteration")
+plt.savefig(f"result_{DIMENSION}.png")
 plt.show()
