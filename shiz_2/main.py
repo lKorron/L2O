@@ -146,7 +146,7 @@ for epoch in range(num_epoch):
                 y = new_y
 
                 loss = criterion(val_f_opt, new_y)
-                total_loss += loss / batch_size
+                total_loss += loss
 
             epoch_val_loss += total_loss.item()
 
