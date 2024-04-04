@@ -56,10 +56,10 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     optimizer.step()
     optimizer.zero_grad()
 
-    return total_loss / batch_size
+    return total_loss
 
 
-DIMENSION = 4
+DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
 output_size = DIMENSION
 opt_iterations = 2 * DIMENSION + 1
@@ -100,7 +100,7 @@ for _ in range(test_size):
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
-patience = 500
+patience = config["patience"]
 best_val_loss = float("inf")
 epochs_no_improve = 0
 
