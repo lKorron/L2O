@@ -21,7 +21,9 @@ class IterationWeightedLoss(nn.Module):
         super().__init__()
         self.tet = tet
         self.iteration = 0
-        self.weights = [0.0, 0.0, 0.01, 0.05, 0.5, 0.5, 1, 1, 5]
+        self.weights = [0] * opt_iterations
+        self.weights[-1] = 5
+        self.weights[-2] = 1
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
@@ -57,7 +59,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     return total_loss / batch_size
 
 
-DIMENSION = 3
+DIMENSION = 1
 input_size = DIMENSION + 1
 output_size = DIMENSION
 opt_iterations = 2 * DIMENSION + 1
@@ -139,7 +141,7 @@ for epoch in range(num_epoch):
             for _ in range(opt_iterations):
                 new_x, hidden, c = model(x, y, hidden, c)
                 new_y = val_fn(new_x)
-                
+
                 x = new_x
                 y = new_y
 
@@ -188,11 +190,12 @@ with torch.no_grad():
         c = None
 
         for iteration in range(1, opt_iterations + 1):
+            new_x, hidden, c = model(x, y, hidden, c)
             new_y = test_fn(new_x)
-            
+
             x = new_x
             y = new_y
-            
+
             loss = (new_y - test_f_opt).mean()
             x_axis.append(iteration)
             y_axis.append(loss.item())
