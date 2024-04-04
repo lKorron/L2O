@@ -63,6 +63,7 @@ class CustomLSTM(nn.Module):
     def __init__(self, input_size, hidden_size):
         super().__init__()
         self.lstm_cell = torch.nn.LSTMCell(input_size, hidden_size)
+        self.lstm_cell2 = torch.nn.LSTMCell(input_size - 1, hidden_size)
         self.h2o = nn.Linear(hidden_size, input_size - 1)
         self.hidden = hidden_size
 
@@ -73,6 +74,8 @@ class CustomLSTM(nn.Module):
         if c is None:
             c = torch.randn((input_x.size(0), self.hidden), device=device)
         h, c = self.lstm_cell(input_x, (h, c))
+        h, c = self.lstm_cell2(self.h2o(h), (h, c))
+
         return self.h2o(h), h, c
 
     def init_hidden(self, batch_size, device):
