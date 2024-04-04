@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt
 from functions import F4, F1
-from model import RNN, GRU, LSTM, MLP, CustomRNN, RNNCell
+from model import RNNCell, CustomLSTM
 from config import config
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -37,10 +37,11 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     y = fn(x)
 
     hidden = model.init_hidden(batch_size, device)
+    c = None
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        new_x, hidden = model(x, y, hidden)
+        new_x, hidden, c = model(x, y, hidden, c)
 
         new_y = fn(new_x)
         x = new_x
@@ -68,7 +69,8 @@ num_epoch = config["epoch"]  # количество эпох
 test_size = 1000  # количество тестовых функций
 test_batch_size = 1
 
-model = RNNCell(input_size, config["hidden"])
+# model = RNNCell(input_size, config["hidden"])
+model = CustomLSTM(input_size, config["hidden"])
 model = model.to(device)
 
 # инфа по градиентам
@@ -131,10 +133,11 @@ for epoch in range(num_epoch):
             x = x.to(device)
             y = val_fn(x)
             hidden = model.init_hidden(batch_size, device)
+            c = None
             total_loss = torch.tensor([0.0]).to(device)
 
             for _ in range(opt_iterations):
-                new_x, hidden = model(x, y, hidden)
+                new_x, hidden, c = model(x, y, hidden, c)
                 new_y = val_fn(new_x)
                 
                 x = new_x
@@ -170,7 +173,7 @@ x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
 x_axis = []
 y_axis = []
 
-GRU.batch_size = 1
+# GRU.batch_size = 1
 
 with torch.no_grad():
     for test_fn, test_f_opt in test_data:
@@ -182,8 +185,9 @@ with torch.no_grad():
         y_axis.append((y - test_f_opt).mean().item())
 
         hidden = model.init_hidden(test_batch_size, device)
+        c = None
+
         for iteration in range(1, opt_iterations + 1):
-            new_x, hidden = model(x, y, hidden)
             new_y = test_fn(new_x)
             
             x = new_x
