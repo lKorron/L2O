@@ -364,8 +364,7 @@ venv/
 *.log
 sweep/
 wandb/
-shiz_2/wandb
-shiz_2/best_model.pth
+best_model.pth
 
 # Android build artifacts
 android/pytorch_android/.cxx

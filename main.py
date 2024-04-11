@@ -1,327 +1,217 @@
-import numpy as np
 import torch
 from torch import nn
-from tqdm import tqdm
-import matplotlib
 import matplotlib.pyplot as plt
-from model import GRU
-from transformer_model import AutoRegressiveTransformerModel as Tranfromer
-
-from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter("runs/transformer_10")
-
-matplotlib.use("TkAgg")
-plt.style.use("fast")
+from functions import F4, F1
+from model import RNNCell, CustomLSTM
+from config import config
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import wandb
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+run = wandb.init()
+wandb.config = config
+
 
 class IterationWeightedLoss(nn.Module):
-    def __init__(self, tet=0.9):
+
+    def __init__(self, tet=0.01):
         super().__init__()
         self.tet = tet
         self.iteration = 0
+        self.weights = [0] * opt_iterations
+        self.weights[-1] = 5
+        self.weights[-2] = 1
 
-    def forward(self, target, min_target):
+    def forward(self, best_y, finded_y):
         self.iteration += 1
-        return (1 / (self.tet**self.iteration)) * torch.relu(
-            torch.dist(min_target, target)
-        )
-
-class FN(nn.Module):
-    def __init__(self, coef, x_opt, f_opt):
-        super(FN, self).__init__()
-        self.coef = coef
-        self.x_opt = x_opt
-        self.f_opt = f_opt
-
-    def forward(self, x):
-        squared_diffs = (x - self.x_opt) ** 2
-
-        weighted_diffs = squared_diffs * self.coef
-
-        sum_of_weighted_diffs = torch.sum(weighted_diffs, dim=1, keepdim=True)
-
-        result = sum_of_weighted_diffs + self.f_opt
+        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
+        # return (1 / (self.tet**self.iteration)) * (finded_y - best_y).mean(dim=1)
 
 
-        return result
-
-
-
-
-def generate_random_values(batch_size):
-
-    coef = torch.rand(batch_size, DIMENSION) * 9 + 1
-    x_opt = torch.rand(batch_size, DIMENSION) * 10 - 5
-    f_opt = torch.rand(batch_size, 1) * 10 - 5
-
-    return coef, x_opt, f_opt
-
-
-def train(model, optimizer, input, target, opt_iterations):
+def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
-    optimizer.zero_grad()
-
     criterion = IterationWeightedLoss()
 
-    x, fn = input
-    x = x.to(device)
+    x = x.clone().detach().to(device)
     y = fn(x)
 
-    xy_embeddings = []
-
-
-    combined = torch.cat((x,y), dim=1)
-
-    xy_embeddings.append(combined)
-    total_loss = torch.tensor(0.)
+    hidden = model.init_hidden(batch_size, device)
+    c = None
+    total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        input_sequence = torch.stack(xy_embeddings, dim=0)
-        positioned_sequence = model.positional_encoding(input_sequence)
+        new_x, hidden, c = model(x, y, hidden, c)
 
-        new_x = model(positioned_sequence)
         new_y = fn(new_x)
-
+        x = new_x
+        y = new_y
         loss = criterion(target, new_y)
+
         total_loss += loss
 
-        combined = torch.cat((new_x, new_y), dim=1)
-        xy_embeddings.append(combined)
-
-
-    (total_loss / batch_size).backward()
+    total_loss.backward()
     optimizer.step()
-    return total_loss.item() / batch_size
+    optimizer.zero_grad()
 
-# def validate(model, input, target, hidden_size, rnn_iterations):
-#     model.eval()
-#     criterion = IterationWeightedLoss()
-#
-#     with torch.no_grad():
-#         x, fn = input
-#         x = x.to(device)
-#         y = fn(x)
-#         hidden = model.init_hidden(batch_size, device)
-#         total_loss = torch.tensor(0.)
-#
-#         for _ in range(rnn_iterations):
-#             x, y, hidden = model(fn, x, y, hidden)
-#             loss = criterion(target, y)
-#             total_loss += loss
-#
-#         return total_loss.item() / batch_size
+    return total_loss
 
 
-DIMENSION = 9
+DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
-output_size = 1
-opt_iterations = 5
-verbose = 1000
-learning_rate = 3e-4
-batch_size = 128
+output_size = DIMENSION
+opt_iterations = 2 * DIMENSION + 1
 
-model = Tranfromer(x_dimension=DIMENSION, model_dim=10, nhead=1, num_layers=2, dropout=0.1)
-# model = model.to(device)
+learning_rate = config["lr"]
+batch_size = config["batch"]  # размер батча
+num_batches = config["num_batches"]  # количество батчей в эпохе
+num_epoch = config["epoch"]  # количество эпох
+test_size = 1000  # количество тестовых функций
+test_batch_size = 1
+
+# model = RNNCell(input_size, config["hidden"])
+model = CustomLSTM(input_size, config["hidden"])
+model = model.to(device)
+
+# инфа по градиентам
+wandb.watch(model)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
+# о нем надо еще подумать
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
-# Размер выборки = итерации * раземер батча
-train_iterations = 1000
+# Генерация функций для тренировки, валидации, теста
+train_data = []
+for _ in range(num_batches):
+    fn = F4()
+    train_data.append((fn, fn.generate(batch_size, DIMENSION)))
+
+val_data = []
+for _ in range(num_batches):
+    fn = F4()
+    val_data.append((fn, fn.generate(batch_size, DIMENSION)))
+
+test_data = []
+for _ in range(test_size):
+    fn = F4()
+    test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
+
+# настройки валидации
+patience = config["patience"]
+best_val_loss = float("inf")
+epochs_no_improve = 0
 
 losses = []
 summ = 0
-fig, ax = plt.subplots()
-loss_text = ax.text(0.8, 0.95, "", transform=ax.transAxes, verticalalignment="top")
+num_iter = 1
 
 x_initial = torch.ones(batch_size, DIMENSION).to(device)
 
-for i in tqdm(range(1, train_iterations + 1)):
-    coef, x_opt, f_opt = generate_random_values(batch_size)
-    fn = FN(coef, x_opt, f_opt)
-    input = (x_initial, fn)
-    target = f_opt
+for epoch in range(num_epoch):
+    # train
+    model.train()
+    epoch_train_loss = 0
+    for fn, f_opt in train_data:
+        target = f_opt
+        loss = train(model, optimizer, x_initial, fn, target, opt_iterations)
+        summ += loss
+        epoch_train_loss += loss
+        losses.append(summ / num_iter)
+        num_iter += 1
+        wandb.log({"train_loss": losses[-1]})
 
-    loss = train(model, optimizer, input, target, opt_iterations)
-    summ += loss
-    losses.append(summ / i)
+    wandb.log({"epoch_train_loss": epoch_train_loss})
 
-    writer.add_scalar("Iteration weighted loss", summ / i, i)
+    # val
+    model.eval()
+    epoch_val_loss = 0
+    with torch.no_grad():
+        for val_fn, val_f_opt in val_data:
+            criterion = IterationWeightedLoss()
+            x = x_initial.clone().detach()
+            x = x.to(device)
+            y = val_fn(x)
+            hidden = model.init_hidden(batch_size, device)
+            c = None
+            total_loss = torch.tensor([0.0]).to(device)
 
-    if i % verbose == 0:
-        scheduler.step(loss)
+            for _ in range(opt_iterations):
+                new_x, hidden, c = model(x, y, hidden, c)
+                new_y = val_fn(new_x)
 
-    # if i % val_verbose == 0:
-    #     val_loss = validate(model, input, target, hidden_size, rnn_iterations)
-    #     writer.add_scalar("Loss/val", val_loss, i)
+                x = new_x
+                y = new_y
 
+                loss = criterion(val_f_opt, new_y)
+                total_loss += loss
 
-test_batch_size = 1
+            epoch_val_loss += total_loss.item()
 
-start_point = torch.ones(test_batch_size, DIMENSION).to(device)
+    wandb.log({"epoch_val_loss": epoch_val_loss})
 
-first_iteration_x_median = 0
-last_iteration_x_median = 0
+    # ранняя остановка
+    if epoch_val_loss < best_val_loss:
+        print(f"[{epoch}] [****] Train {epoch_train_loss} Valid {epoch_val_loss}")
+        best_val_loss = epoch_val_loss
+        epochs_no_improve = 0
+        torch.save(model.state_dict(), "best_model.pth")
+    else:
+        print(f"[{epoch}] [////] Train {epoch_train_loss} Valid {epoch_val_loss}")
+        epochs_no_improve += 1
+        if epochs_no_improve >= patience:
+            print(
+                f"Early stopping at epoch {epoch} due to no improvement in validation loss."
+            )
+            break
 
+# test
+model.load_state_dict(torch.load("best_model.pth"))
+
+x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
+
+x_axis = []
+y_axis = []
+
+# GRU.batch_size = 1
 
 with torch.no_grad():
-    test_iterations = 500
-    iter_sum = 0
+    for test_fn, test_f_opt in test_data:
+        x = x_initial.clone().detach().to(device)
+        y = test_fn(x)
 
-    y_errors = []
-    x_errors = []
+        # для сравнения включим первую (статичную) точку
+        x_axis.append(0)
+        y_axis.append((y - test_f_opt).mean().item())
 
-    for _ in tqdm(range(test_iterations)):
-        coef, x_opt, f_opt = generate_random_values(test_batch_size)
-        fn = FN(coef, x_opt, f_opt)
+        hidden = model.init_hidden(test_batch_size, device)
+        c = None
 
+        for iteration in range(1, opt_iterations + 1):
+            new_x, hidden, c = model(x, y, hidden, c)
+            new_y = test_fn(new_x)
 
-        x = start_point.to(device)
-        y = fn(x)
+            x = new_x
+            y = new_y
 
+            loss = (new_y - test_f_opt).mean()
+            x_axis.append(iteration)
+            y_axis.append(loss.item())
 
-        y_s = []
-        x_s = []
+# боксплоты по итерациям
 
-        xy_embeddings = []
+loss_df = pd.DataFrame(
+    {
+        "Iteration": x_axis,
+        "Loss (y_i - y_best)": y_axis,
+    }
+)
 
-        combined = torch.cat((x, y), dim=1)
-        xy_embeddings.append(combined)
-
-        # x_embedding = model.x2embedding(x)
-        # y_embedding = model.y2embedding(y)
-        # xy_embeddings.append(x_embedding)
-        # xy_embeddings.append(y_embedding)
-
-        for _ in range(opt_iterations):
-            input_sequence = torch.stack(xy_embeddings, dim=0)
-            positioned_sequence = model.positional_encoding(input_sequence)
-
-            new_x = model(positioned_sequence)
-            new_y = fn(new_x)
-
-            # new_x_embedding = model.x2embedding(new_x)
-            # new_y_embedding = model.y2embedding(new_y)
-            #
-            # xy_embeddings.append(new_x_embedding)
-            # xy_embeddings.append(new_y_embedding)
-
-            combined = torch.cat((new_x, new_y), dim=1)
-            xy_embeddings.append(combined)
-
-
-            y_s.append(new_y.detach())
-            x_s.append(new_x.detach())
-
-        # Пересчет ошибок для батча
-        y_errors_batch = [torch.norm(f_opt - y, dim=1).mean().item() for y in y_s]  # Средняя ошибка по батчу для y
-        x_errors_batch = [torch.norm(x_opt - x, dim=1).mean().item() for x in x_s]  # Средняя ошибка по батчу для x
-
-        y_errors.append(y_errors_batch)
-        x_errors.append(x_errors_batch)
-
-    for i in range(opt_iterations):
-        fig, axs = plt.subplots(2)
-        y_values = [y[i] for y in y_errors]
-        x_values = [x[i] for x in x_errors]
-
-        if i == 0:
-            first_iteration_x_median = np.median(x_values)
-        if i == opt_iterations - 1:
-            last_iteration_x_median = np.median(x_values)
-
-        axs[0].hist(y_values, bins=50)
-        axs[0].set_title(f"Y Errors at {i+1} iteration")
-        axs[0].axvline(np.median(y_values), color="r", linestyle="dashed", linewidth=2)
-        axs[0].axvline(
-            np.mean(y_values), color="g", linestyle="dashed", linewidth=2
-        )  # Added line for average
-        axs[0].text(
-            0.95,
-            0.95,
-            f"Median: {np.median(y_values):.3f}",
-            verticalalignment="top",
-            horizontalalignment="right",
-            transform=axs[0].transAxes,
-            color="red",
-            fontsize=10,
-        )
-        axs[0].text(
-            0.95,
-            0.85,
-            f"Average: {np.mean(y_values):.3f}",
-            verticalalignment="top",
-            horizontalalignment="right",
-            transform=axs[0].transAxes,
-            color="green",
-            fontsize=10,
-        )
-        axs[0].set_xlabel(f"Error Value |y_opt - y_{i+1}|")
-        axs[0].set_ylabel("Frequency")
-        axs[1].hist(x_values, bins=50)
-        axs[1].set_title(f"X Errors at {i+1} iteration")
-        axs[1].axvline(np.median(x_values), color="r", linestyle="dashed", linewidth=2)
-        axs[1].axvline(
-            np.mean(x_values), color="g", linestyle="dashed", linewidth=2
-        )  # Added line for average
-        axs[1].text(
-            0.95,
-            0.95,
-            f"Median: {np.median(x_values):.3f}",
-            verticalalignment="top",
-            horizontalalignment="right",
-            transform=axs[1].transAxes,
-            color="red",
-            fontsize=10,
-        )
-        axs[1].text(
-            0.95,
-            0.85,
-            f"Average: {np.mean(x_values):.3f}",
-            verticalalignment="top",
-            horizontalalignment="right",
-            transform=axs[1].transAxes,
-            color="green",
-            fontsize=10,
-        )
-        axs[1].set_xlabel(f"Error Value |x_opt - x_{i+1}|")
-        axs[1].set_ylabel("Frequency")
-        plt.subplots_adjust(hspace=0.5)
-        # plt.savefig(f"plot_b_{i+1}.png")
-        writer.add_figure(f"Iteration {i + 1}", plt.gcf())
-        # plt.show()
-
-
-
-writer.add_hparams({
-    'train_iterations': train_iterations,
-    'batch_size': batch_size,
-    'dimension': DIMENSION,
-    'learning_rate': learning_rate
-}, {'loss': losses[-1],
-    'first_iteration_x_median': first_iteration_x_median,
-    'last iteration_x_median': last_iteration_x_median})
-
-# median_y_errors = []
-# median_x_errors = []
-# mean_y_errors = []
-# mean_x_errors = []
-
-# for i in range(rnn_iterations):
-#     y_values = [y[i] for y in y_errors]
-#     x_values = [x[i] for x in x_errors]
-#     median_y_errors.append(np.median(y_values))
-#     median_x_errors.append(np.median(x_values))
-#     mean_y_errors.append(np.mean(y_values))
-#     mean_x_errors.append(np.mean(x_values))
-
-# np.save("median_y_errors.npy", median_y_errors)
-# np.save("median_x_errors.npy", median_x_errors)
-# np.save("mean_y_errors.npy", mean_y_errors)
-# np.save("mean_x_errors.npy", mean_x_errors)
-
-# torch.save(model.state_dict(), f"./model_{mean_y_errors[-1]:.3f}.pth")
+fig, ax = plt.subplots(figsize=(20, 5))
+gfg = sns.boxplot(x="Iteration", y="Loss (y_i - y_best)", data=loss_df, ax=ax)
+gfg.set_ylim(0, 10000)
+plt.title("Boxplot of Losses by Optimization Iteration")
+plt.savefig(f"result_{DIMENSION}.png")
+plt.show()
