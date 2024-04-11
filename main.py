@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from functions import F4, F1
-from model import RNNCell, CustomLSTM
+from functions import F4
+from model import CustomLSTM
 from config import config
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -22,8 +22,8 @@ class IterationWeightedLoss(nn.Module):
         self.tet = tet
         self.iteration = 0
         self.weights = [0] * opt_iterations
-        self.weights[-1] = 5
-        self.weights[-2] = 1
+        self.weights[-1] = 5 / 6
+        self.weights[-2] = 1 / 6
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
@@ -71,7 +71,6 @@ num_epoch = config["epoch"]  # количество эпох
 test_size = 1000  # количество тестовых функций
 test_batch_size = 1
 
-# model = RNNCell(input_size, config["hidden"])
 model = CustomLSTM(input_size, config["hidden"])
 model = model.to(device)
 
@@ -123,7 +122,7 @@ for epoch in range(num_epoch):
         num_iter += 1
         wandb.log({"train_loss": losses[-1]})
 
-    wandb.log({"epoch_train_loss": epoch_train_loss})
+    wandb.log({"epoch_train_loss": epoch_train_loss / batch_size})
 
     # val
     model.eval()
@@ -150,7 +149,7 @@ for epoch in range(num_epoch):
 
             epoch_val_loss += total_loss.item()
 
-    wandb.log({"epoch_val_loss": epoch_val_loss})
+    wandb.log({"epoch_val_loss": epoch_val_loss / batch_size})
 
     # ранняя остановка
     if epoch_val_loss < best_val_loss:
