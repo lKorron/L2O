@@ -1,5 +1,5 @@
 config = {
-    "dimension": 3,
+    "dimension": 10,
     "lr": 3e-4,
     "batch": 128,
     "hidden": 128,
