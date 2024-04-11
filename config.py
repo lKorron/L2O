@@ -1,9 +1,9 @@
 config = {
-    "dimension": 10,
+    "dimension": 6,
     "lr": 3e-4,
-    "batch": 128,
-    "hidden": 128,
+    "batch": 1024,
+    "hidden": 512,
     "epoch": 5000,
-    "num_batches": 10,
-    "patience": 50
+    "num_batches": 3,
+    "patience": 250,
 }

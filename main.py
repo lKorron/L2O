@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import wandb
+import random
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -113,16 +115,17 @@ for epoch in range(num_epoch):
     # train
     model.train()
     epoch_train_loss = 0
+    random.shuffle(train_data)
     for fn, f_opt in train_data:
         target = f_opt
         loss = train(model, optimizer, x_initial, fn, target, opt_iterations)
         summ += loss
-        epoch_train_loss += loss
+        epoch_train_loss += loss / batch_size
         losses.append(summ / num_iter)
         num_iter += 1
         wandb.log({"train_loss": losses[-1]})
 
-    wandb.log({"epoch_train_loss": epoch_train_loss / batch_size})
+    wandb.log({"epoch_train_loss": epoch_train_loss})
 
     # val
     model.eval()
@@ -147,9 +150,9 @@ for epoch in range(num_epoch):
                 loss = criterion(val_f_opt, new_y)
                 total_loss += loss
 
-            epoch_val_loss += total_loss.item()
+            epoch_val_loss += total_loss.item() / batch_size
 
-    wandb.log({"epoch_val_loss": epoch_val_loss / batch_size})
+    wandb.log({"epoch_val_loss": epoch_val_loss})
 
     # ранняя остановка
     if epoch_val_loss < best_val_loss:
@@ -210,7 +213,7 @@ loss_df = pd.DataFrame(
 
 fig, ax = plt.subplots(figsize=(20, 5))
 gfg = sns.boxplot(x="Iteration", y="Loss (y_i - y_best)", data=loss_df, ax=ax)
-gfg.set_ylim(0, 10000)
+# gfg.set_ylim(0, 10000)
 plt.title("Boxplot of Losses by Optimization Iteration")
 plt.savefig(f"result_{DIMENSION}.png")
 plt.show()

@@ -34,9 +34,7 @@ class CustomLSTM(nn.Module):
         self.lstm_cell = torch.nn.LSTMCell(input_size, hidden_size)
         self.lstm_cell2 = torch.nn.LSTMCell(input_size - 1, hidden_size)
         self.lstm_cell3 = torch.nn.LSTMCell(input_size - 1, hidden_size)
-        self.h2o = nn.Sequential(nn.Linear(hidden_size, hidden_size),
-                                 nn.ReLU(),
-                                 nn.Linear(hidden_size, input_size - 1))
+        self.h2o = nn.Linear(hidden_size, input_size - 1)
         self.hidden = hidden_size
 
     def forward(self, x, y, h=None, c=None):
@@ -47,7 +45,7 @@ class CustomLSTM(nn.Module):
             c = torch.randn((input_x.size(0), self.hidden), device=device)
         h, c = self.lstm_cell(input_x, (h, c))
         h, c = self.lstm_cell2(self.h2o(h), (h, c))
-        h, c = self.lstm_cell3(self.h2o(h), (h, c))
+        # h, c = self.lstm_cell3(self.h2o(h), (h, c))
 
         return self.h2o(h), h, c
 
