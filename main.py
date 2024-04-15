@@ -11,6 +11,7 @@ import wandb
 import random
 import math
 
+print("transformer branch")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
