@@ -9,9 +9,9 @@ import seaborn as sns
 import pandas as pd
 import wandb
 import random
-import math
+from transformer_model import CustomTransformer
 
-print("transformer branch")
+print("transformer test")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -42,16 +42,19 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     x = x.clone().detach().to(device)
     y = fn(x)
 
-    hidden = model.init_hidden(batch_size, device)
-    c = None
+    # B, T, C
+
+    input_seq = torch.unsqueeze(torch.cat((y, x), dim=-1), dim=-2)
+
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        new_x, hidden, c = model(x, y, hidden, c)
-
+        new_x = model(input_seq)
         new_y = fn(new_x)
-        x = new_x
-        y = new_y
+
+        new_vector = torch.unsqueeze(torch.cat((new_y, new_x), dim=-1), dim=-2)
+        input_seq = torch.cat((input_seq, new_vector), dim=1)
+
         loss = criterion(target, new_y)
 
         total_loss += loss
@@ -75,7 +78,7 @@ num_epoch = config["epoch"]  # количество эпох
 test_size = 1000  # количество тестовых функций
 test_batch_size = 1
 
-model = CustomLSTM(input_size, config["hidden"])
+model = CustomTransformer(x_dimension=DIMENSION, model_dim=32, nhead=4, num_layers=1)
 model = model.to(device)
 
 # инфа по градиентам
@@ -138,16 +141,16 @@ for epoch in range(num_epoch):
             x = x_initial.clone().detach()
             x = x.to(device)
             y = val_fn(x)
-            hidden = model.init_hidden(batch_size, device)
-            c = None
+
+            input_seq = torch.unsqueeze(torch.cat((y, x), dim=-1), dim=-2)
             total_loss = torch.tensor([0.0]).to(device)
 
             for _ in range(opt_iterations):
-                new_x, hidden, c = model(x, y, hidden, c)
+                new_x = model(input_seq)
                 new_y = val_fn(new_x)
 
-                x = new_x
-                y = new_y
+                new_vector = torch.unsqueeze(torch.cat((new_y, new_x), dim=-1), dim=-2)
+                input_seq = torch.cat((input_seq, new_vector), dim=1)
 
                 loss = criterion(val_f_opt, new_y)
                 total_loss += loss
