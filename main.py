@@ -11,7 +11,7 @@ import wandb
 import random
 from transformer_model import CustomTransformer
 
-print("transformer test")
+print("transformer testing")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -193,11 +193,10 @@ with torch.no_grad():
         x_axis.append(0)
         y_axis.append((y - test_f_opt).mean().item())
 
-        hidden = model.init_hidden(test_batch_size, device)
-        c = None
+        input_seq = torch.unsqueeze(torch.cat((y, x), dim=-1), dim=-2)
 
         for iteration in range(1, opt_iterations + 1):
-            new_x, hidden, c = model(x, y, hidden, c)
+            new_x = model(input_seq)
             new_y = test_fn(new_x)
 
             x = new_x
@@ -206,6 +205,11 @@ with torch.no_grad():
             loss = (new_y - test_f_opt).mean()
             x_axis.append(iteration)
             y_axis.append(loss.item())
+
+            new_vector = torch.unsqueeze(torch.cat((new_y, new_x), dim=-1), dim=-2)
+            input_seq = torch.cat((input_seq, new_vector), dim=1)
+
+
 
 # боксплоты по итерациям
 
