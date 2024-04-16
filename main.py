@@ -78,7 +78,9 @@ num_epoch = config["epoch"]  # количество эпох
 test_size = 1000  # количество тестовых функций
 test_batch_size = 1
 
-model = CustomTransformer(x_dimension=DIMENSION, model_dim=32, nhead=4, num_layers=1)
+model = CustomTransformer(x_dimension=DIMENSION, model_dim=config["model_dim"],
+                          nhead=config["nhead"], num_layers=config["num_layers"],
+                          dropout=config["dropout"])
 model = model.to(device)
 
 # инфа по градиентам
