@@ -65,7 +65,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
 output_size = DIMENSION
-opt_iterations = 20
+opt_iterations = 2 * DIMENSION + 1
 
 learning_rate = config["lr"]
 batch_size = config["batch"]  # размер батча
