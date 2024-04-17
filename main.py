@@ -208,12 +208,12 @@ with torch.no_grad():
 loss_df = pd.DataFrame(
     {
         "Iteration": x_axis,
-        "Loss (y_i - y_best)": y_axis,
+        "Loss log (y_i - y_best)": torch.log10(torch.tensor(y_axis)),
     }
 )
 
 fig, ax = plt.subplots(figsize=(20, 5))
-gfg = sns.boxplot(x="Iteration", y="Loss (y_i - y_best)", data=loss_df, ax=ax)
+gfg = sns.boxplot(x="Iteration", y="Loss log (y_i - y_best)", data=loss_df, ax=ax)
 # gfg.set_ylim(0, 10000)
 plt.title("Boxplot of Losses by Optimization Iteration")
 plt.savefig(f"result_{DIMENSION}.png")
