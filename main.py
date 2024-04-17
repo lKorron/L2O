@@ -65,7 +65,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
 output_size = DIMENSION
-opt_iterations = 2 * DIMENSION + 1
+opt_iterations = 20
 
 learning_rate = config["lr"]
 batch_size = config["batch"]  # размер батча
@@ -171,7 +171,7 @@ for epoch in range(num_epoch):
             break
 
 # test
-model.load_state_dict(torch.load("best_model.pth"))
+# model.load_state_dict(torch.load("best_model.pth", map_location=torch.device('cpu')))
 
 x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
 
@@ -212,9 +212,35 @@ loss_df = pd.DataFrame(
     }
 )
 
+def min_of_previous(nums, window_length):
+    min_values = []
+    for i, num in enumerate(nums):
+        if i % window_length == 0:
+            min_so_far = float("inf")
+        min_so_far = min(min_so_far, num)
+        min_values.append(min_so_far)
+    return min_values
+
+y_axis_min = min_of_previous(nums=y_axis, window_length=opt_iterations)
+
+min_df = pd.DataFrame(
+    {
+        "Iteration": x_axis,
+        "min log (y_i - y_best)": torch.log10(torch.tensor(y_axis_min)),
+    }
+)
+
+
 fig, ax = plt.subplots(figsize=(20, 5))
 gfg = sns.boxplot(x="Iteration", y="Loss log (y_i - y_best)", data=loss_df, ax=ax)
-# gfg.set_ylim(0, 10000)
 plt.title("Boxplot of Losses by Optimization Iteration")
 plt.savefig(f"result_{DIMENSION}.png")
 plt.show()
+
+fig_min, ax_min = plt.subplots(figsize=(20, 5))
+gfg_min = sns.boxplot(x="Iteration", y="min log (y_i - y_best)", data=min_df, ax=ax_min)
+plt.title("Boxplot of Losses by Optimization Iteration")
+plt.savefig(f"result_{DIMENSION}_min.png")
+plt.show()
+
+
