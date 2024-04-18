@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from functions import F4
+from functions import F4, F5
 from model import CustomLSTM
 from config import config
 import matplotlib.pyplot as plt
@@ -177,6 +177,7 @@ x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
 
 x_axis = []
 y_axis = []
+best_y_axis = []
 
 # GRU.batch_size = 1
 
@@ -188,20 +189,23 @@ with torch.no_grad():
         # для сравнения включим первую (статичную) точку
         x_axis.append(0)
         y_axis.append((y - test_f_opt).mean().item())
+        best_y_axis.append((y - test_f_opt).mean().item())
 
         hidden = model.init_hidden(test_batch_size, device)
         c = None
-
+        best_y = y
         for iteration in range(1, opt_iterations + 1):
             new_x, hidden, c = model(x, y, hidden, c)
             new_y = test_fn(new_x)
 
             x = new_x
             y = new_y
+            best_y = min(best_y, y)
 
-            loss = (new_y - test_f_opt).mean()
+            loss = (new_y - test_f_opt)
             x_axis.append(iteration)
             y_axis.append(loss.item())
+            best_y_axis.append((best_y - test_f_opt).item())
 
 # боксплоты по итерациям
 
@@ -212,35 +216,57 @@ loss_df = pd.DataFrame(
     }
 )
 
-def min_of_previous(nums, window_length):
-    min_values = []
-    for i, num in enumerate(nums):
-        if i % window_length == 0:
-            min_so_far = float("inf")
-        min_so_far = min(min_so_far, num)
-        min_values.append(min_so_far)
-    return min_values
-
-y_axis_min = min_of_previous(nums=y_axis, window_length=opt_iterations)
-
 min_df = pd.DataFrame(
     {
         "Iteration": x_axis,
-        "min log (y_i - y_best)": torch.log10(torch.tensor(y_axis_min)),
+        "Loss log (min(y_k where k <= i) - y_best)": torch.log10(
+            torch.tensor(best_y_axis)
+        ),
     }
 )
+
+torch.rand(1, DIMENSION, device=device) * 100 - 50
 
 
 fig, ax = plt.subplots(figsize=(20, 5))
 gfg = sns.boxplot(x="Iteration", y="Loss log (y_i - y_best)", data=loss_df, ax=ax)
-plt.title("Boxplot of Losses by Optimization Iteration")
-plt.savefig(f"result_{DIMENSION}.png")
+plt.title("Boxplot of Losses by value on each iteration")
+plt.savefig(f"result_{DIMENSION}_module.png")
 plt.show()
 
 fig_min, ax_min = plt.subplots(figsize=(20, 5))
-gfg_min = sns.boxplot(x="Iteration", y="min log (y_i - y_best)", data=min_df, ax=ax_min)
-plt.title("Boxplot of Losses by Optimization Iteration")
-plt.savefig(f"result_{DIMENSION}_min.png")
+gfg_min = sns.boxplot(x="Iteration", y="Loss log (min(y_k where k <= i) - y_best)", data=min_df, ax=ax_min)
+plt.title("Boxplot of Losses by best value on each iteration")
+plt.savefig(f"result_{DIMENSION}_min_module.png")
 plt.show()
 
+# x_axis = []
+# best_y_axis = []
 
+# with torch.no_grad():
+#     for test_fn, test_f_opt in test_data:
+#         x = x_initial.clone().detach().to(device)
+#         y = test_fn(x)
+#         x_axis.append(0)
+#         best_y_axis.append((y - test_f_opt).mean().item())
+#         best_y = y
+#         for iteration in range(1, opt_iterations + 1):
+#             x = torch.rand(1, DIMENSION, device=device) * 100 - 50
+#             y = test_fn(x)
+#             best_y = min(best_y, y)
+#             x_axis.append(iteration)
+#             best_y_axis.append((best_y - test_f_opt).item())
+
+# min_df = pd.DataFrame(
+#     {
+#         "Iteration": x_axis,
+#         "Loss log (min(y_k where k <= i) - y_best)": torch.log10(
+#             torch.tensor(best_y_axis)
+#         ),
+#     }
+# )
+# fig_min, ax_min = plt.subplots(figsize=(20, 5))
+# gfg_min = sns.boxplot(x="Iteration", y="Loss log (min(y_k where k <= i) - y_best)", data=min_df, ax=ax_min)
+# plt.title("Boxplot of Losses by best value on each iteration")
+# plt.savefig(f"random_{DIMENSION}_hard.png")
+# plt.show()

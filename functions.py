@@ -15,22 +15,9 @@ class Function(nn.Module):
         return self.forward(self.x_opt)
 
 
-# Abs sin
-class F1(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.x_opt = None
-
-    def forward(self, x):
-        return torch.sum(torch.abs(torch.sin(x - self.x_opt)), dim=1).unsqueeze(1)
-
-    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension) * 20 - 10
-        self.x_opt = self.x_opt.to(device)
-        return self.forward(self.x_opt)
 
 
-# Sphere
+# Sphere + abs
 class F4(nn.Module):
     def __init__(self):
         super().__init__()
@@ -48,7 +35,58 @@ class F4(nn.Module):
         return self.forward(self.x_opt)
 
 
+# Abs
+class F5(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.x_opt = None
+        self.coefs = None
+
+    def forward(self, x):
+        scaled_diffs = torch.mul(torch.abs((x - self.x_opt)), self.coefs2)
+        return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
+
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.coefs2 = torch.rand(batch_size, dimension, device=device) * 10
+        return self.forward(self.x_opt)
+
+
+# Sphere
+class F6(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.x_opt = None
+        self.coefs = None
+
+    def forward(self, x):
+        scaled_diffs = torch.mul((x - self.x_opt) ** 2, self.coefs1) + torch.mul(
+            torch.abs((x - self.x_opt)), self.coefs2
+        )
+        return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
+
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
+        self.coefs2 = torch.rand(batch_size, dimension, device=device) * 10
+        return self.forward(self.x_opt)
+
+
 # Not fixed for batches !!!
+
+# Abs sin
+class F1(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.x_opt = None
+
+    def forward(self, x):
+        return torch.sum(torch.abs(torch.sin(x - self.x_opt)), dim=1).unsqueeze(1)
+
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension) * 20 - 10
+        self.x_opt = self.x_opt.to(device)
+        return self.forward(self.x_opt)
 
 # Small abs
 class F2(nn.Module):
@@ -82,37 +120,37 @@ class F3(nn.Module):
         return self.forward(self.x_opt)
 
 
-# Big abs
-class F5(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.x_opt = None
+# # Big abs
+# class F5(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.x_opt = None
 
-    def forward(self, x):
-        return torch.sum(torch.abs(x - self.x_opt))
+#     def forward(self, x):
+#         return torch.sum(torch.abs(x - self.x_opt))
 
-    def generate(self, dimention: int) -> torch.Tensor:
-        self.x_opt = torch.rand(dimention) * 100 - 50
-        self.x_opt = self.x_opt.to(device)
-        return self.forward(self.x_opt)
+#     def generate(self, dimention: int) -> torch.Tensor:
+#         self.x_opt = torch.rand(dimention) * 100 - 50
+#         self.x_opt = self.x_opt.to(device)
+#         return self.forward(self.x_opt)
 
 
-# Rosenbrock
-class F6(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.x_opt = None
+# # Rosenbrock
+# class F6(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.x_opt = None
 
-    def forward(self, x):
-        self.z = x - self.x_opt
-        return torch.sum(
-            100 * (self.z[:-1] ** 2 - self.z[1:]) ** 2 + (self.z[:-1] - 1) ** 2
-        ) - torch.tensor(1.0).to(device)
+#     def forward(self, x):
+#         self.z = x - self.x_opt
+#         return torch.sum(
+#             100 * (self.z[:-1] ** 2 - self.z[1:]) ** 2 + (self.z[:-1] - 1) ** 2
+#         ) - torch.tensor(1.0).to(device)
 
-    def generate(self, dimention: int) -> torch.Tensor:
-        self.x_opt = torch.rand(dimention) * 100 - 50
-        self.x_opt = self.x_opt.to(device)
-        return self.forward(self.x_opt)
+#     def generate(self, dimention: int) -> torch.Tensor:
+#         self.x_opt = torch.rand(dimention) * 100 - 50
+#         self.x_opt = self.x_opt.to(device)
+#         return self.forward(self.x_opt)
 
 
 # Rastrigin
