@@ -93,7 +93,12 @@ x_initial = torch.ones(batch_size, DIMENSION).to(device)
 x_axis = []
 best_y_axis = []
 
-optimizer = ng.optimizers.NGOpt(parametrization=4, budget=opt_iterations + 1)
+param = ng.p.Scalar(lower=-50, upper=50)
+parametrization = ng.p.Instrumentation(ng.p.Scalar())
+
+optimizer = ng.optimizers.NGOpt39(parametrization=parametrization, budget=opt_iterations + 1)
+
+
 
 with torch.no_grad():
     for test_fn, test_f_opt in tqdm(test_data):
@@ -104,6 +109,9 @@ with torch.no_grad():
 
             x = optimizer.ask()
             y = test_fn(*x.args, **x.kwargs)
+
+
+
             optimizer.tell(x, y)
 
             x_axis.append(i)
