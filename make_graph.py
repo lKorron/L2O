@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 
+# fix names
 our_data = np.load('out_model.npz')
 bo_data = np.load("bo.npz")
 bayes_optim_bo_data = np.load("BayesOptimBo.npz")

@@ -7,7 +7,7 @@ import wandb
 from torch import nn
 
 from config import config
-from functions import F6, F4, F5
+from functions_torch import *
 from model import CustomLSTM
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -45,11 +45,9 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        new_x, hidden, c = model(x, y, hidden, c)
-        new_y = fn(new_x)
-        x = new_x
-        y = new_y
-        loss = criterion(target, new_y)
+        x, hidden, c = model(x, y, hidden, c)
+        y = fn(x)
+        loss = criterion(target, y)
         total_loss += loss
 
     total_loss.backward()
@@ -62,13 +60,13 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
 output_size = DIMENSION
-opt_iterations = 2 * DIMENSION + 1
+opt_iterations = config["budget"] - 1
 
 learning_rate = config["lr"]
-batch_size = config["batch"]  # размер батча
-num_batches = config["num_batches"]  # количество батчей в эпохе
-num_epoch = config["epoch"]  # количество эпох
-test_size = 100  # количество тестовых функций
+batch_size = config["batch"]
+num_batches = config["num_batches"]
+num_epoch = config["epoch"]
+test_size = config["test_size"]
 test_batch_size = 1
 
 model = CustomLSTM(input_size, config["hidden"])
@@ -83,19 +81,23 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
 # Генерация функций для тренировки, валидации, теста
+
+learn_function = config["learn_function"]
+test_function = config["test_function"]
+
 train_data = []
 for _ in range(num_batches):
-    fn = F5()
+    fn = globals()[learn_function]()
     train_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 val_data = []
 for _ in range(num_batches):
-    fn = F5()
+    fn = globals()[learn_function]()
     val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 test_data = []
 for _ in range(test_size):
-    fn = F4()
+    fn = globals()[test_function]()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации
@@ -107,13 +109,10 @@ losses = []
 summ = 0
 num_iter = 1
 
-# x_initial = torch.ones(batch_size, DIMENSION).to(device)
-# x_initial = torch.rand(batch_size, DIMENSION, device=device) * 100 - 50
-
 x_initial_test = torch.rand(DIMENSION, device=device) * 100 - 50
 x_initial = torch.stack([x_initial_test for _ in range(batch_size)])
 
-train_flag = True
+train_flag = config["train"]
 
 if train_flag:
     for epoch in range(num_epoch):
@@ -146,13 +145,9 @@ if train_flag:
                 total_loss = torch.tensor([0.0]).to(device)
 
                 for _ in range(opt_iterations):
-                    new_x, hidden, c = model(x, y, hidden, c)
-                    new_y = val_fn(new_x)
-
-                    x = new_x
-                    y = new_y
-
-                    loss = criterion(val_f_opt, new_y)
+                    x, hidden, c = model(x, y, hidden, c)
+                    y = val_fn(x)
+                    loss = criterion(val_f_opt, y)
                     total_loss += loss
 
                 epoch_val_loss += total_loss.item() / batch_size
@@ -174,16 +169,16 @@ if train_flag:
                 )
                 break
 
-# test
+
+"""
+TEST
+"""
 
 model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
 
-# x_initial = torch.ones(test_batch_size, DIMENSION, device=device)
-# x_initial = torch.rand(test_batch_size, DIMENSION, device=device) * 100 - 50
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 
 x_axis = []
-y_axis = []
 best_y_axis = []
 
 with torch.no_grad():
@@ -193,23 +188,18 @@ with torch.no_grad():
 
         # для сравнения включим первую (статичную) точку
         x_axis.append(0)
-        y_axis.append((y - test_f_opt).mean().item())
         best_y_axis.append((y - test_f_opt).mean().item())
 
         hidden = model.init_hidden(test_batch_size, device)
         c = None
         best_y = y
         for iteration in range(1, opt_iterations + 1):
-            new_x, hidden, c = model(x, y, hidden, c)
-            new_y = test_fn(new_x)
-
-            x = new_x
-            y = new_y
+            x, hidden, c = model(x, y, hidden, c)
+            y = test_fn(x)
             best_y = min(best_y, y)
+            loss = y - test_f_opt
 
-            loss = new_y - test_f_opt
             x_axis.append(iteration)
-            y_axis.append(loss.item())
             best_y_axis.append((best_y - test_f_opt).item())
 
-np.savez("out_model.npz", x=x_axis, y=best_y_axis)
+np.savez("data/out_model.npz", x=x_axis, y=best_y_axis)
