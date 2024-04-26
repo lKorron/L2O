@@ -107,7 +107,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-# x_initial = torch.zeros(batch_size, DIMENSION).to(device)
+# x_initial = torch.ones(batch_size, DIMENSION).to(device)
 # x_initial = torch.rand(batch_size, DIMENSION, device=device) * 100 - 50
 
 x_initial_test = torch.rand(DIMENSION, device=device) * 100 - 50
@@ -178,7 +178,7 @@ if train_flag:
 
 model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
 
-# x_initial = torch.zeros(test_batch_size, DIMENSION, device=device)
+# x_initial = torch.ones(test_batch_size, DIMENSION, device=device)
 # x_initial = torch.rand(test_batch_size, DIMENSION, device=device) * 100 - 50
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 
@@ -188,7 +188,7 @@ best_y_axis = []
 
 with torch.no_grad():
     for test_fn, test_f_opt in test_data:
-        x = x_initial_test.clone().detach().to(device)
+        x = x_initial.clone().detach().to(device)
         y = test_fn(x)
 
         # для сравнения включим первую (статичную) точку
