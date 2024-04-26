@@ -7,7 +7,7 @@ import wandb
 from torch import nn
 
 from config import config
-from functions import F6
+from functions import F6, F4, F5
 from model import CustomLSTM
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,17 +85,17 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # Генерация функций для тренировки, валидации, теста
 train_data = []
 for _ in range(num_batches):
-    fn = F6()
+    fn = F5()
     train_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 val_data = []
 for _ in range(num_batches):
-    fn = F6()
+    fn = F5()
     val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 test_data = []
 for _ in range(test_size):
-    fn = F6()
+    fn = F4()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 # настройки валидации

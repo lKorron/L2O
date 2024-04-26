@@ -113,7 +113,7 @@ test_batch_size = 1
 
 test_data = []
 for _ in range(test_size):
-    fn = Rosenbrock()
+    fn = F4()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
@@ -208,7 +208,7 @@ np.savez("bo.npz", x=x_axis, y=best_y_axis)
 
 test_data = []
 for _ in range(test_size):
-    fn = RosenbrockBayes()
+    fn = F4Bayes()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
