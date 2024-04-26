@@ -13,7 +13,7 @@ config = {
     # ML staff
     "train": True,
     "model": "CustomLSTM",
-    "layers": 1,
+    "layers": 2,
     "lr": 3e-4,
     "hidden": 512,
     "epoch": 5000,

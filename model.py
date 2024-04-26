@@ -9,6 +9,47 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+import torch
+import torch.nn as nn
+
+
+class CustomLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers = 2):
+        super().__init__()
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.layers = nn.ModuleList()
+
+        for i in range(num_layers):
+            layer_input_size = input_size if i == 0 else hidden_size
+            self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
+
+        self.h2o = nn.Linear(hidden_size, input_size - 1)
+
+    def forward(self, x, y, initial_states=None):
+        input_x = torch.cat((x, y), dim=1)
+        if initial_states is None:
+            initial_states = [
+                (
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                )
+                for _ in range(self.num_layers)
+            ]
+
+        current_input = input_x
+        new_states = []
+
+        for i, layer in enumerate(self.layers):
+            h, c = layer(current_input, initial_states[i])
+            current_input = h if i < self.num_layers - 1 else self.h2o(h)
+            new_states.append((h, c))
+
+        return current_input, new_states
+
+    def init_hidden(self, batch_size, device):
+        return None
+
 class CustomGRU(nn.Module):
     def __init__(self, input_size, hidden_size):
         super().__init__()
@@ -28,29 +69,29 @@ class CustomGRU(nn.Module):
         return None
 
 
-class CustomLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size):
-        super().__init__()
-        self.lstm_cell = torch.nn.LSTMCell(input_size, hidden_size)
-        self.lstm_cell2 = torch.nn.LSTMCell(input_size - 1, hidden_size)
-        self.lstm_cell3 = torch.nn.LSTMCell(input_size - 1, hidden_size)
-        self.h2o = nn.Linear(hidden_size, input_size - 1)
-        self.hidden = hidden_size
+# class CustomLSTM(nn.Module):
+#     def __init__(self, input_size, hidden_size):
+#         super().__init__()
+#         self.lstm_cell = torch.nn.LSTMCell(input_size, hidden_size)
+#         self.lstm_cell2 = torch.nn.LSTMCell(input_size - 1, hidden_size)
+#         self.lstm_cell3 = torch.nn.LSTMCell(input_size - 1, hidden_size)
+#         self.h2o = nn.Linear(hidden_size, input_size - 1)
+#         self.hidden = hidden_size
 
-    def forward(self, x, y, h=None, c=None):
-        input_x = torch.cat((x, y), dim=1)
-        if h is None:
-            h = torch.randn((input_x.size(0), self.hidden), device=device)
-        if c is None:
-            c = torch.randn((input_x.size(0), self.hidden), device=device)
-        h, c = self.lstm_cell(input_x, (h, c))
-        h, c = self.lstm_cell2(self.h2o(h), (h, c))
-        # h, c = self.lstm_cell3(self.h2o(h), (h, c))
+#     def forward(self, x, y, h=None, c=None):
+#         input_x = torch.cat((x, y), dim=1)
+#         if h is None:
+#             h = torch.randn((input_x.size(0), self.hidden), device=device)
+#         if c is None:
+#             c = torch.randn((input_x.size(0), self.hidden), device=device)
+#         h, c = self.lstm_cell(input_x, (h, c))
+#         h, c = self.lstm_cell2(self.h2o(h), (h, c))
+#         # h, c = self.lstm_cell3(self.h2o(h), (h, c))
 
-        return self.h2o(h), h, c
+#         return self.h2o(h), h, c
 
-    def init_hidden(self, batch_size, device):
-        return None
+#     def init_hidden(self, batch_size, device):
+#         return None
 
 
 class CustomRNN(nn.Module):

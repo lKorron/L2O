@@ -8,11 +8,11 @@ from torch import nn
 
 from config import config
 from functions_torch import *
-from model import CustomLSTM
+from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init()
 wandb.config = config
 
@@ -40,12 +40,11 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     x = x.clone().detach().to(device)
     y = fn(x)
 
-    hidden = model.init_hidden(batch_size, device)
-    c = None
+    hidden = None
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        x, hidden, c = model(x, y, hidden, c)
+        x, hidden = model(x, y, hidden)
         y = fn(x)
         loss = criterion(target, y)
         total_loss += loss
@@ -69,7 +68,9 @@ num_epoch = config["epoch"]
 test_size = config["test_size"]
 test_batch_size = 1
 
-model = CustomLSTM(input_size, config["hidden"])
+model_name = config["model"]
+
+model = globals()[model_name](input_size, config["hidden"], config["layers"])
 model = model.to(device)
 
 # инфа по градиентам
@@ -140,12 +141,11 @@ if train_flag:
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)
-                hidden = model.init_hidden(batch_size, device)
-                c = None
+                hidden = None
                 total_loss = torch.tensor([0.0]).to(device)
 
                 for _ in range(opt_iterations):
-                    x, hidden, c = model(x, y, hidden, c)
+                    x, hidden = model(x, y, hidden)
                     y = val_fn(x)
                     loss = criterion(val_f_opt, y)
                     total_loss += loss
@@ -190,11 +190,10 @@ with torch.no_grad():
         x_axis.append(0)
         best_y_axis.append((y - test_f_opt).mean().item())
 
-        hidden = model.init_hidden(test_batch_size, device)
-        c = None
+        hidden = None
         best_y = y
         for iteration in range(1, opt_iterations + 1):
-            x, hidden, c = model(x, y, hidden, c)
+            x, hidden = model(x, y, hidden)
             y = test_fn(x)
             best_y = min(best_y, y)
             loss = y - test_f_opt
