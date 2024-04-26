@@ -125,6 +125,36 @@ with torch.no_grad():
 
 np.savez("BayesOptimBo.npz", x=x_axis, y=best_y_axis)
 
+# BO
+
+x_axis = []
+best_y_axis = []
+
+params = ng.p.Instrumentation(ng.p.Array(shape=(4,), lower=-50, upper=50))
+
+with torch.no_grad():
+    for test_fn, test_f_opt in tqdm(test_data):
+
+        # Тут работают BO, BayesOptimBO
+        optimizer = ng.optimizers.BO(
+            parametrization=params, budget=opt_iterations + 1
+        )
+
+        best_y = float("+inf")
+        for i in range(optimizer.budget):
+
+            x = optimizer.ask()
+            y = test_fn(*x.args)
+            # нужно ограничить точность, чтобы оптимизаторы не падали
+            y = float(y)
+            optimizer.tell(x, y)
+
+            x_axis.append(i)
+            best_y = min(best_y, y)
+            best_y_axis.append((best_y - test_f_opt).item())
+
+np.savez("BayesOptimBo.npz", x=x_axis, y=best_y_axis)
+
 
 # BayesianOptimization
 
