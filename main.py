@@ -107,7 +107,8 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial = torch.zeros(batch_size, DIMENSION).to(device)
+# x_initial = torch.zeros(batch_size, DIMENSION).to(device)
+x_initial = torch.rand(batch_size, DIMENSION, device=device) * 100 - 50
 
 train_flag = True
 
@@ -174,7 +175,8 @@ if train_flag:
 
 model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
 
-x_initial = torch.zeros(test_batch_size, DIMENSION).to(device)
+# x_initial = torch.zeros(test_batch_size, DIMENSION, device=device)
+x_initial = torch.rand(test_batch_size, DIMENSION, device=device) * 100 - 50
 
 x_axis = []
 y_axis = []

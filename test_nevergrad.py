@@ -87,10 +87,7 @@ class RosenbrockBayes:
         x = np.array(args)  # combining args into a single numpy array
         z = x - self.x_opt
         # Summing over the vector, assuming z has at least two elements
-        if len(z) > 1:
-            return np.sum(100 * (z[:-1] ** 2 - z[1:]) ** 2 + (z[:-1] - 1) ** 2) - 1
-        else:
-            return 0  # Default to 0 if insufficient dimensions are provided
+        return np.sum(100 * (z[:-1] ** 2 - z[1:]) ** 2 + (z[:-1] - 1) ** 2) - 1
 
     def generate(self, batch_size: int, dimension: int):
         # Generating a single optimal point
