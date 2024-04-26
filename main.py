@@ -1,16 +1,18 @@
+import os
+import random
+
+import numpy as np
 import torch
+import wandb
 from torch import nn
+
+from config import config
 from functions import F4
 from model import CustomLSTM
-from config import config
-import matplotlib.pyplot as plt
-import wandb
-import random
-import numpy as np
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init()
 wandb.config = config
 
@@ -170,7 +172,7 @@ if train_flag:
 
 # test
 
-model.load_state_dict(torch.load("best_model.pth", map_location=torch.device('cpu')))
+model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
 
 x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
 
@@ -199,9 +201,9 @@ with torch.no_grad():
             y = new_y
             best_y = min(best_y, y)
 
-            loss = (new_y - test_f_opt)
+            loss = new_y - test_f_opt
             x_axis.append(iteration)
             y_axis.append(loss.item())
             best_y_axis.append((best_y - test_f_opt).item())
 
-np.savez('out_model.npz', x=x_axis, y=best_y_axis)
+np.savez("out_model.npz", x=x_axis, y=best_y_axis)

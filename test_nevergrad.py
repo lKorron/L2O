@@ -1,7 +1,9 @@
-import numpy as np
 import nevergrad as ng
+import numpy as np
 import torch
+from bayes_opt import BayesianOptimization
 from tqdm import tqdm
+
 from config import config
 
 

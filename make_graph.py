@@ -1,9 +1,8 @@
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
-import torch
+import numpy as np
 import pandas as pd
-
+import seaborn as sns
+import torch
 
 our_data = np.load('out_model.npz')
 bo_data = np.load('bo.npz')
