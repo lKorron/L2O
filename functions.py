@@ -27,9 +27,7 @@ class F6(nn.Module):
         ).unsqueeze(1) - torch.tensor(1.0, device=x.device).unsqueeze(0)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = (torch.rand(batch_size, dimension, device="cuda") * 100 - 50).to(
-            "cuda"
-        )
+        self.x_opt = torch.rand(batch_size, dimension, device="cuda") * 100 - 50
         return self.forward(self.x_opt.clone())
 
 

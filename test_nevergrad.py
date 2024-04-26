@@ -92,7 +92,7 @@ class RosenbrockBayes:
         else:
             return 0  # Default to 0 if insufficient dimensions are provided
 
-    def generate(self, dimension: int):
+    def generate(self, batch_size: int, dimension: int):
         # Generating a single optimal point
         self.dimension = dimension
         self.x_opt = np.random.rand(dimension) * 100 - 50
