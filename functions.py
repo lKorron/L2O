@@ -15,6 +15,22 @@ class Function(nn.Module):
         return self.forward(self.x_opt)
 
 
+class F6(nn.Module):
+    def __init__(self):
+        super(F6, self).__init__()
+        self.x_opt = None
+
+    def forward(self, x):
+        z = x - self.x_opt
+        return torch.sum(
+            100 * (z[:, :-1] ** 2 - z[:, 1:]) ** 2 + (z[:, :-1] - 1) ** 2, dim=1
+        ).unsqueeze(1) - torch.tensor(1.0, device=x.device).unsqueeze(0)
+
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = (torch.rand(batch_size, dimension, device="cuda") * 100 - 50).to(
+            "cuda"
+        )
+        return self.forward(self.x_opt.clone())
 
 
 # Sphere + abs
