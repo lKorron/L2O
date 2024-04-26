@@ -5,7 +5,7 @@ import seaborn as sns
 import torch
 
 our_data = np.load('out_model.npz')
-bo_data = np.load('bo.npz')
+bo_data = np.load("bo.npz")
 bayes_optim_bo_data = np.load("BayesOptimBo.npz")
 bayes_opt_data = np.load('BayesianOptimization.npz')
 cma_data = np.load('cma.npz')
@@ -37,4 +37,5 @@ fig, ax = plt.subplots(figsize=(10, 5))
 sns.boxplot(x='Iteration', y='Loss', hue='Optimizer', data=full_df, ax=ax)
 plt.title('Boxplot of Losses by Optimizer and Iteration')
 plt.legend(title='Optimizer')
+plt.savefig('boxplot.png')
 plt.show()

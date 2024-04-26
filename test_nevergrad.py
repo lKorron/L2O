@@ -52,6 +52,57 @@ class F4Bayes:
         return self.forward(x1, x2, x3, x4)
 
 
+class Rosenbrock:
+    def __init__(self):
+        self.x_opt = None
+
+    def forward(self, x):
+        # Assuming x is a 2D numpy array where each row is an input vector
+        z = x - self.x_opt
+        # Computing the Rosenbrock function over each row
+        return (
+            np.sum(
+                100 * (z[:, :-1] ** 2 - z[:, 1:]) ** 2 + (z[:, :-1] - 1) ** 2, axis=1
+            ).reshape(-1, 1)
+            - 1
+        )
+
+    def generate(self, batch_size: int, dimension: int) -> np.ndarray:
+        # Generating optimal points for each batch instance
+        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        # Returning the Rosenbrock function value computed at the optimal points
+        return self.forward(self.x_opt)
+
+    def __call__(self, x):
+        return self.forward(x)
+
+
+class RosenbrockBayes:
+    def __init__(self):
+        self.x_opt = None
+        self.dimension = None
+
+    def forward(self, *args):
+        # args are expected to be individual components of the vector
+        x = np.array(args)  # combining args into a single numpy array
+        z = x - self.x_opt
+        # Summing over the vector, assuming z has at least two elements
+        if len(z) > 1:
+            return np.sum(100 * (z[:-1] ** 2 - z[1:]) ** 2 + (z[:-1] - 1) ** 2) - 1
+        else:
+            return 0  # Default to 0 if insufficient dimensions are provided
+
+    def generate(self, dimension: int):
+        # Generating a single optimal point
+        self.dimension = dimension
+        self.x_opt = np.random.rand(dimension) * 100 - 50
+        # Using the optimal point to get Rosenbrock value
+        return self.forward(*self.x_opt)
+
+    def __call__(self, *args):
+        return self.forward(*args)
+
+
 DIMENSION = config["dimension"]
 input_size = DIMENSION + 1
 output_size = DIMENSION
@@ -65,7 +116,7 @@ test_batch_size = 1
 
 test_data = []
 for _ in range(test_size):
-    fn = F4()
+    fn = Rosenbrock()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
@@ -153,14 +204,14 @@ with torch.no_grad():
             best_y = min(best_y, y)
             best_y_axis.append((best_y - test_f_opt).item())
 
-np.savez("BayesOptimBo.npz", x=x_axis, y=best_y_axis)
+np.savez("bo.npz", x=x_axis, y=best_y_axis)
 
 
 # BayesianOptimization
 
 test_data = []
 for _ in range(test_size):
-    fn = F4Bayes()
+    fn = RosenbrockBayes()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
@@ -179,21 +230,16 @@ with torch.no_grad():
             pbounds=pbounds,
             random_state=1,
         )
-
         optimizer.maximize(
             init_points=1,
             n_iter=opt_iterations+1
         )
-
         best_y = float("+inf")
 
         for i, res in enumerate(optimizer.res):
-
             xs = optimizer.res[i]['params'].values()
             value = test_fn(*xs)
-
             x_axis.append(i)
-
             y = test_fn(*xs)
             best_y = min(y, best_y)
             best_y_axis.append(best_y - test_f_opt)
