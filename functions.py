@@ -66,24 +66,24 @@ class F5(nn.Module):
         return self.forward(self.x_opt)
 
 
-# Sphere
-class F6(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.x_opt = None
-        self.coefs = None
+# # Sphere
+# class F6(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.x_opt = None
+#         self.coefs = None
 
-    def forward(self, x):
-        scaled_diffs = torch.mul((x - self.x_opt) ** 2, self.coefs1) + torch.mul(
-            torch.abs((x - self.x_opt)), self.coefs2
-        )
-        return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
+#     def forward(self, x):
+#         scaled_diffs = torch.mul((x - self.x_opt) ** 2, self.coefs1) + torch.mul(
+#             torch.abs((x - self.x_opt)), self.coefs2
+#         )
+#         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
-    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
-        self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
-        self.coefs2 = torch.rand(batch_size, dimension, device=device) * 10
-        return self.forward(self.x_opt)
+#     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+#         self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+#         self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
+#         self.coefs2 = torch.rand(batch_size, dimension, device=device) * 10
+#         return self.forward(self.x_opt)
 
 
 # Not fixed for batches !!!

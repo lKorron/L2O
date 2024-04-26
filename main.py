@@ -107,7 +107,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial = torch.ones(batch_size, DIMENSION).to(device)
+x_initial = torch.zeros(batch_size, DIMENSION).to(device)
 
 train_flag = True
 
@@ -174,7 +174,7 @@ if train_flag:
 
 model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
 
-x_initial = torch.ones(test_batch_size, DIMENSION).to(device)
+x_initial = torch.zeros(test_batch_size, DIMENSION).to(device)
 
 x_axis = []
 y_axis = []
