@@ -12,30 +12,36 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# wandb.login(key=os.environ["WANDB_API"])
-run = wandb.init()
-wandb.config = config
+wandb.login(key=os.environ["WANDB_API"])
+run = wandb.init(project="l2o", config=config)
 
 
 class IterationWeightedLoss(nn.Module):
 
-    def __init__(self, tet=0.01):
+    def __init__(self, tet=0.01, mode: str = "standard"):
         super().__init__()
         self.tet = tet
+        self.mode = mode
         self.iteration = 0
         self.weights = [0] * opt_iterations
         self.weights[-1] = 5 / 6
         self.weights[-2] = 1 / 6
+        self.cur_best = None
 
     def forward(self, best_y, finded_y):
         self.iteration += 1
+
+        if self.mode == "min":
+            if self.iteration == 1:
+                self.cur_best = best_y
+            best_y = torch.min(self.cur_best, best_y)
+
         return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
-        # return (1 / (self.tet**self.iteration)) * (finded_y - best_y).mean(dim=1)
 
 
 def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
-    criterion = IterationWeightedLoss()
+    criterion = IterationWeightedLoss(mode="min")
 
     x = x.clone().detach().to(device)
     y = fn(x)
@@ -137,7 +143,7 @@ if train_flag:
         epoch_val_loss = 0
         with torch.no_grad():
             for val_fn, val_f_opt in val_data:
-                criterion = IterationWeightedLoss()
+                criterion = IterationWeightedLoss(mode="min")
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)

@@ -4,12 +4,12 @@ import pandas as pd
 import seaborn as sns
 import torch
 
-# fix names
-our_data = np.load('out_model.npz')
-bo_data = np.load("bo.npz")
-bayes_optim_bo_data = np.load("BayesOptimBo.npz")
-bayes_opt_data = np.load('BayesianOptimization.npz')
-cma_data = np.load('cma.npz')
+# TODO add random
+our_data = np.load('data/out_model.npz')
+bo_data = np.load("data/ParametrizedBO.npz")
+bayes_optim_bo_data = np.load("data/BayesOptimBo.npz")
+bayes_opt_data = np.load('data/BayesianOptimization.npz')
+cma_data = np.load("data/ParametrizedCMA.npz")
 
 
 df1 = pd.DataFrame(
