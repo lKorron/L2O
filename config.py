@@ -6,8 +6,8 @@ config = {
     "budget": 2 * 4 + 2,
 
     # Functions number
-    "batch": 1,
-    "num_batches": 1,
+    "batch": 1024,
+    "num_batches": 3,
     "test_size": 100,
 
     # ML staff
