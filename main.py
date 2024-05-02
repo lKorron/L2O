@@ -12,20 +12,22 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
 class IterationWeightedLoss(nn.Module):
 
-    def __init__(self, tet=0.01, mode: str = "standard"):
+    def __init__(self, tet=0.01, mode="standard", last_impact=2):
         super().__init__()
         self.tet = tet
         self.mode = mode
         self.iteration = 0
         self.weights = [0] * opt_iterations
-        self.weights[-1] = 5 / 6
-        self.weights[-2] = 1 / 6
+        self.weights[-last_impact:] = [5**i for i in range(last_impact)]
+        self.weights = torch.tensor(self.weights, dtype=torch.float)
+        self.weights /= self.weights.sum()
         self.cur_best = None
 
     def forward(self, best_y, finded_y):
@@ -33,10 +35,11 @@ class IterationWeightedLoss(nn.Module):
 
         if self.mode == "min":
             if self.iteration == 1:
-                self.cur_best = best_y
-            best_y = torch.min(self.cur_best, best_y)
+                self.cur_best = best_y.clone()
+            else:
+                self.cur_best = torch.min(self.cur_best, best_y)
 
-        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
+        return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
 
 
 def train(model, optimizer, x, fn, target, opt_iterations):
@@ -46,7 +49,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     x = x.clone().detach().to(device)
     y = fn(x)
 
-    hidden = None
+    hidden = model.init_hidden(x.size(0), device)
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
@@ -147,7 +150,7 @@ if train_flag:
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)
-                hidden = None
+                hidden = model.init_hidden(x.size(0), device)
                 total_loss = torch.tensor([0.0]).to(device)
 
                 for _ in range(opt_iterations):
@@ -196,7 +199,7 @@ with torch.no_grad():
         x_axis.append(0)
         best_y_axis.append((y - test_f_opt).mean().item())
 
-        hidden = None
+        hidden = model.init_hidden(x.size(0), device)
         best_y = y
         for iteration in range(1, opt_iterations + 1):
             x, hidden = model(x, y, hidden)
