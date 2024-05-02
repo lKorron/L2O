@@ -25,9 +25,22 @@ class CustomLSTM(nn.Module):
             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
 
         self.h2o = nn.Linear(hidden_size, input_size - 1)
+        self.hist = None
 
     def forward(self, x, y, initial_states=None):
+
+        if self.hist is None:
+            self.hist = y.unsqueeze(1).detach()
+        else:
+           self.hist = torch.cat((self.hist, y.unsqueeze(1).detach()), dim=1)
+
+
+        if self.hist.shape[1] > 1:
+            std = self.hist.std(dim=1)
+            y = (y - self.hist.mean(dim=1)) / std + 0.001
+
         input_x = torch.cat((x, y), dim=1)
+
         if initial_states is None:
             initial_states = [
                 (
