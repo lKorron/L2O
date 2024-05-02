@@ -12,7 +12,7 @@ config = {
 
     # ML staff
     "train": True,
-    "model": "CustomLSTM",
+    "model": "ApiLSTM",
     "layers": 2,
     "lr": 3e-4,
     "hidden": 512,

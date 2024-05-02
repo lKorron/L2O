@@ -50,6 +50,36 @@ class CustomLSTM(nn.Module):
     def init_hidden(self, batch_size, device):
         return None
 
+class ApiLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers = 2):
+        super().__init__()
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size,
+                            num_layers=num_layers, batch_first=True)
+
+        self.h2o = nn.Linear(hidden_size, input_size - 1)
+        self.input_sec = None
+
+    def forward(self, x, y, initial_states=None):
+        input_x = torch.cat((x, y), dim=1)
+        if self.input_sec is None:
+            self.input_sec = input_x.unsqueeze(1)
+        else:
+            self.input_sec = torch.cat((self.input_sec, input_x.unsqueeze(1)), dim=1)
+
+        output, _ = self.lstm(self.input_sec)
+        last_hidden = output[:, -1]
+        return self.h2o(last_hidden), last_hidden
+
+
+
+
+
+
+
+
+
+
+
 class CustomGRU(nn.Module):
     def __init__(self, input_size, hidden_size):
         super().__init__()
