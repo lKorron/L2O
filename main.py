@@ -13,19 +13,23 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
 class IterationWeightedLoss(nn.Module):
 
-    def __init__(self, tet=0.01, mode="standard", last_impact=2):
+    def __init__(
+        self,
+        mode="standard",
+        last_impact=config["last_impact"],
+        coef_scale=config["coef_scale"],
+    ):
         super().__init__()
-        self.tet = tet
         self.mode = mode
         self.iteration = 0
         self.weights = [0] * opt_iterations
-        self.weights[-last_impact:] = [5**i for i in range(last_impact)]
+        self.weights[-last_impact:] = [coef_scale**i for i in range(last_impact)]
         self.weights = torch.tensor(self.weights, dtype=torch.float)
         self.weights /= self.weights.sum()
         self.cur_best = None
@@ -182,7 +186,11 @@ if train_flag:
 TEST
 """
 
-model.load_state_dict(torch.load(f"best_model_{config['test_function']}.pth", map_location=torch.device("cpu")))
+model.load_state_dict(
+    torch.load(
+        f"best_model_{config['test_function']}.pth", map_location=torch.device("cpu")
+    )
+)
 
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 
@@ -213,9 +221,17 @@ np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axi
 
 
 def plot_contour_with_points(test_fn, points):
+    # Extract coordinates of points
+    points_np = np.array([p.cpu().detach().numpy().squeeze() for p in points])
+    x_min, x_max = min(points_np[:, 0].min(), -40), max(points_np[:, 0].max(), 40)
+    y_min, y_max = min(points_np[:, 1].min(), -40), max(points_np[:, 1].max(), 40)
+
+    # Adjust the margins
+    margin = 10  # Add some margin around points
+    x1_min, x1_max = x_min - margin, x_max + margin
+    x2_min, x2_max = y_min - margin, y_max + margin
+
     # Generate a grid of points
-    x1_min, x1_max = -100, 100
-    x2_min, x2_max = -100, 100
     x1, x2 = np.meshgrid(
         np.linspace(x1_min, x1_max, 400), np.linspace(x2_min, x2_max, 400)
     )
@@ -230,9 +246,6 @@ def plot_contour_with_points(test_fn, points):
     )
     z = z.reshape(x1.shape)
 
-    # Convert torch tensors to numpy arrays for plotting
-    points_np = [p.cpu().detach().numpy() for p in points]
-
     # Create the plot
     plt.figure(figsize=(10, 8))
     contour = plt.contourf(x1, x2, z, levels=50, cmap="viridis")
@@ -244,7 +257,6 @@ def plot_contour_with_points(test_fn, points):
     plt.plot(x_opt_np[0], x_opt_np[1], "g*", markersize=10, label="Optimal Point")
 
     # Plot the points
-    points_np = np.array(points_np).squeeze()
     plt.plot(points_np[:, 0], points_np[:, 1], "ro-", markersize=5, label="Points")
 
     plt.xlabel("x1")
@@ -259,7 +271,7 @@ def plot_contour_with_points(test_fn, points):
 
 n = 0
 # Assuming `test_data` and `x_initial` are defined and available
-for test_fn, _ in test_data[:2]:
+for test_fn, _ in test_data[:4]:
     points = []
     x = x_initial.clone().detach().to(device)
     y = test_fn(x)

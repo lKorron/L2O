@@ -16,4 +16,7 @@ config = {
     "hidden": 512,
     "epoch": 5000,
     "patience": 300,
+    # Loss
+    "last_impact": 2,
+    "coef_scale": 5,
 }
