@@ -2,6 +2,7 @@ import os
 import random
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import wandb
 from torch import nn
@@ -12,8 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-# wandb.login(key=os.environ["WANDB_API"])
+wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -168,7 +168,7 @@ if train_flag:
             print(f"[{epoch}] [****] Train {epoch_train_loss} Valid {epoch_val_loss}")
             best_val_loss = epoch_val_loss
             epochs_no_improve = 0
-            torch.save(model.state_dict(), "best_model.pth")
+            torch.save(model.state_dict(), f"best_model_{config['test_function']}.pth")
         else:
             print(f"[{epoch}] [////] Train {epoch_train_loss} Valid {epoch_val_loss}")
             epochs_no_improve += 1
@@ -178,12 +178,11 @@ if train_flag:
                 )
                 break
 
-
 """
 TEST
 """
 
-model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
+model.load_state_dict(torch.load(f"best_model_{config['test_function']}.pth", map_location=torch.device("cpu")))
 
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 
@@ -210,4 +209,69 @@ with torch.no_grad():
             x_axis.append(iteration)
             best_y_axis.append((best_y - test_f_opt).item())
 
-np.savez("data/out_model.npz", x=x_axis, y=best_y_axis)
+np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+
+
+def plot_contour_with_points(test_fn, points):
+    # Generate a grid of points
+    x1_min, x1_max = -100, 100
+    x2_min, x2_max = -100, 100
+    x1, x2 = np.meshgrid(
+        np.linspace(x1_min, x1_max, 400), np.linspace(x2_min, x2_max, 400)
+    )
+
+    # Evaluate the function on the grid
+    grid_points = np.c_[x1.ravel(), x2.ravel()]
+    z = np.array(
+        [
+            test_fn(torch.tensor(p, dtype=torch.float32).unsqueeze(0).to(device)).item()
+            for p in grid_points
+        ]
+    )
+    z = z.reshape(x1.shape)
+
+    # Convert torch tensors to numpy arrays for plotting
+    points_np = [p.cpu().detach().numpy() for p in points]
+
+    # Create the plot
+    plt.figure(figsize=(10, 8))
+    contour = plt.contourf(x1, x2, z, levels=50, cmap="viridis")
+    plt.colorbar(contour)
+    plt.contour(x1, x2, z, colors="black", linewidths=0.5)
+
+    # Plot the optimal point
+    x_opt_np = test_fn.x_opt.cpu().numpy().squeeze()
+    plt.plot(x_opt_np[0], x_opt_np[1], "g*", markersize=10, label="Optimal Point")
+
+    # Plot the points
+    points_np = np.array(points_np).squeeze()
+    plt.plot(points_np[:, 0], points_np[:, 1], "ro-", markersize=5, label="Points")
+
+    plt.xlabel("x1")
+    plt.ylabel("x2")
+    plt.title("Contour Plot with Points")
+    plt.legend()
+    plt.savefig(f"viz/viz_new_{n}.png")
+    plt.show()
+
+
+# Example usage with test data and model
+
+n = 0
+# Assuming `test_data` and `x_initial` are defined and available
+for test_fn, _ in test_data[:2]:
+    points = []
+    x = x_initial.clone().detach().to(device)
+    y = test_fn(x)
+
+    # для сравнения включим первую (статичную) точку
+    points.append(x.cpu())
+
+    hidden = model.init_hidden(x.size(0), device)
+    for iteration in range(1, opt_iterations + 1):
+        x, hidden = model(x, y, hidden)
+        points.append(x.cpu())
+        y = test_fn(x)
+    n += 1
+
+    plot_contour_with_points(test_fn, points)

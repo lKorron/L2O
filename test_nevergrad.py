@@ -39,7 +39,7 @@ def optimize_and_save(test_data, optimizer_type, parametrization, budget):
             best_y = min(best_y, y)
             best_y_axis.append((best_y - test_f_opt).item())
 
-    file_name = f"data/{optimizer_name}.npz"
+    file_name = f"data/{optimizer_name}_{config['test_function']}.npz"
     np.savez(file_name, x=x_axis, y=best_y_axis)
     print(f"Data saved to {file_name}")
 
