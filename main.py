@@ -86,7 +86,9 @@ test_batch_size = 1
 
 model_name = config["model"]
 
-model = globals()[model_name](input_size, output_size, config["hidden"], config["layers"])
+model = globals()[model_name](
+    input_size, output_size, config["hidden"], config["layers"]
+)
 model = model.to(device)
 
 # инфа по градиентам
@@ -262,6 +264,11 @@ def plot_contour_with_points(test_fn, points):
     # Plot the points
     plt.plot(points_np[:, 0], points_np[:, 1], "ro-", markersize=5, label="Points")
 
+    # Highlight the first point
+    plt.plot(
+        points_np[0, 0], points_np[0, 1], "yo", markersize=5, label="Initial Point"
+    )
+
     plt.xlabel("x1")
     plt.ylabel("x2")
     plt.title("Contour Plot with Points")
@@ -270,16 +277,12 @@ def plot_contour_with_points(test_fn, points):
     plt.show()
 
 
-# Example usage with test data and model
-
 n = 0
-# Assuming `test_data` and `x_initial` are defined and available
 for test_fn, _ in test_data[:4]:
     points = []
     x = x_initial.clone().detach().to(device)
     y = test_fn(x)
 
-    # для сравнения включим первую (статичную) точку
     points.append(x.cpu())
 
     hidden = model.init_hidden(x.size(0), device)
