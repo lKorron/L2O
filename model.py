@@ -6,7 +6,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class CustomLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers=2):
+
+    def __init__(self, input_size, output_size, hidden_size, num_layers=2):
         super().__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
@@ -16,12 +17,16 @@ class CustomLSTM(nn.Module):
             layer_input_size = input_size if i == 0 else hidden_size
             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
 
-        self.h2o = nn.Linear(hidden_size, input_size - 1)
-        self.hist = None
+        self.h2o = nn.Linear(hidden_size, output_size)
+        self.best_y = None
 
     def forward(self, x, y, initial_states=None):
+        if self.best_y is None:
+            self.best_y = y.clone()
+        else:
+            self.best_y = torch.min(self.best_y, y)
 
-        input_x = torch.cat((x, y), dim=1)
+        input_x = torch.cat((x, y, self.best_y), dim=1)
 
         if initial_states is None:
             initial_states = [
@@ -43,7 +48,7 @@ class CustomLSTM(nn.Module):
         return current_input, new_states
 
     def init_hidden(self, batch_size, device):
-        self.hist = None
+        self.best_y = None
         return None
 
 

@@ -9,7 +9,7 @@ config = {
     "num_batches": 3,
     "test_size": 100,
     # ML staff
-    "train": False,
+    "train": True,
     "model": "CustomLSTM",
     "layers": 2,
     "lr": 3e-4,

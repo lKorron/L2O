@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -42,13 +42,15 @@ class IterationWeightedLoss(nn.Module):
                 self.cur_best = best_y.clone()
             else:
                 self.cur_best = torch.min(self.cur_best, best_y)
+        else:
+            self.cur_best = best_y
 
         return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
 
 
 def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
-    criterion = IterationWeightedLoss(mode="min")
+    criterion = IterationWeightedLoss()
 
     x = x.clone().detach().to(device)
     y = fn(x)
@@ -62,15 +64,16 @@ def train(model, optimizer, x, fn, target, opt_iterations):
         loss = criterion(target, y)
         total_loss += loss
 
+    optimizer.zero_grad()
     total_loss.backward()
     optimizer.step()
-    optimizer.zero_grad()
 
     return total_loss
 
 
 DIMENSION = config["dimension"]
-input_size = DIMENSION + 1
+addition_features = 1
+input_size = DIMENSION + 1 + addition_features
 output_size = DIMENSION
 opt_iterations = config["budget"] - 1
 
@@ -83,7 +86,7 @@ test_batch_size = 1
 
 model_name = config["model"]
 
-model = globals()[model_name](input_size, config["hidden"], config["layers"])
+model = globals()[model_name](input_size, output_size, config["hidden"], config["layers"])
 model = model.to(device)
 
 # инфа по градиентам
@@ -150,7 +153,7 @@ if train_flag:
         epoch_val_loss = 0
         with torch.no_grad():
             for val_fn, val_f_opt in val_data:
-                criterion = IterationWeightedLoss(mode="min")
+                criterion = IterationWeightedLoss()
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)
