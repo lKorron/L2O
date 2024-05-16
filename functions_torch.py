@@ -68,8 +68,8 @@ class Sphere:
         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension) * 100 - 50
-        self.coefs1 = torch.rand(batch_size, dimension) * 10
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
         return self.forward(self.x_opt)
 
     def __call__(self, x):
