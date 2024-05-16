@@ -95,14 +95,31 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 learn_function = config["learn_function"]
 test_function = config["test_function"]
 
+learn_function1 = config["learn_function1"]
+learn_function2 = config["learn_function2"]
+
+split_ratio = 0.6
+
+split_number = int(np.round(num_batches * split_ratio))
+
+
 train_data = []
-for _ in range(num_batches):
-    fn = globals()[learn_function]()
+
+for _ in range(split_number):
+    fn = globals()[learn_function1]()
+    train_data.append((fn, fn.generate(batch_size, DIMENSION)))
+
+for _ in range(split_number , num_batches):
+    fn = globals()[learn_function2]()
     train_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 val_data = []
-for _ in range(num_batches):
-    fn = globals()[learn_function]()
+for _ in range(split_number):
+    fn = globals()[learn_function1]()
+    val_data.append((fn, fn.generate(batch_size, DIMENSION)))
+
+for _ in range(split_number, num_batches):
+    fn = globals()[learn_function2]()
     val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 test_data = []
@@ -129,7 +146,12 @@ if train_flag:
         # train
         model.train()
         epoch_train_loss = 0
-        random.shuffle(train_data)
+        f1_train_data = train_data[:split_number]
+        f2_train_data = train_data[split_number:]
+        random.shuffle(f1_train_data)
+        random.shuffle(f2_train_data)
+        train_data = f1_train_data + f2_train_data
+
         for fn, f_opt in train_data:
             target = f_opt
             loss = train(model, optimizer, x_initial, fn, target, opt_iterations)

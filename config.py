@@ -2,7 +2,9 @@ config = {
     # Task
     "dimension": 4,
     "learn_function": "Sphere_Abs",
-    "test_function": "Sphere_Abs",
+    "learn_function1": "Sphere",
+    "learn_function2": "Abs",
+    "test_function": "Sphere",
     "budget": 2 * 4 + 2,
 
     # Functions number
