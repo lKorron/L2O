@@ -9,8 +9,8 @@ from config import config
 # TODO add random
 our_data = np.load(f'data/out_model_{config["test_function"]}.npz')
 bo_data = np.load(f"data/ParametrizedBO_{config['test_function']}.npz")
-bayes_optim_bo_data = np.load(f"data/BayesOptimBo_{config['test_function']}.npz")
-bayes_opt_data = np.load(f"data/BayesianOptimization_{config['test_function']}.npz")
+random_data = np.load(f"data/RandomSearchMaker_{config['test_function']}.npz")
+bayes_opt_data = np.load(f"data/BayesOptim_{config['test_function']}.npz")
 cma_data = np.load(f"data/ParametrizedCMA_{config['test_function']}.npz")
 
 
@@ -32,7 +32,7 @@ df2 = pd.DataFrame(
 df3 = pd.DataFrame(
     {
         "Iteration": our_data["x"],
-        "Loss": torch.log10(torch.tensor(bayes_optim_bo_data["y"])),
+        "Loss": torch.log10(torch.tensor(bayes_opt_data["y"])),
         "Optimizer": "BayesOptimBo",
     }
 )
@@ -45,8 +45,16 @@ df4 = pd.DataFrame(
     }
 )
 
+df5 = pd.DataFrame(
+    {
+        "Iteration": our_data["x"],
+        "Loss": torch.log10(torch.tensor(random_data["y"])),
+        "Optimizer": "Random",
+    }
+)
 
-full_df = pd.concat([df1, df2, df3, df4])
+
+full_df = pd.concat([df1, df2, df3, df4, df5])
 
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.boxplot(x="Iteration", y="Loss", hue="Optimizer", data=full_df, ax=ax)
