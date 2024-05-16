@@ -58,8 +58,9 @@ class Abs(nn.Module):
         return self.forward(self.x_opt)
 
 
+
 class Sphere:
-    def __init__(self):
+    def init(self):
         self.x_opt = None
         self.coefs1 = None
 

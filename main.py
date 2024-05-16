@@ -2,6 +2,7 @@ import os
 import random
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import wandb
 from torch import nn
@@ -12,20 +13,23 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-# wandb.login(key=os.environ["WANDB_API"])
+wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
 class IterationWeightedLoss(nn.Module):
 
-    def __init__(self, tet=0.01, mode="standard", last_impact=2):
+    def __init__(
+        self,
+        mode="standard",
+        last_impact=config["last_impact"],
+        coef_scale=config["coef_scale"],
+    ):
         super().__init__()
-        self.tet = tet
         self.mode = mode
         self.iteration = 0
         self.weights = [0] * opt_iterations
-        self.weights[-last_impact:] = [5**i for i in range(last_impact)]
+        self.weights[-last_impact:] = [coef_scale**i for i in range(last_impact)]
         self.weights = torch.tensor(self.weights, dtype=torch.float)
         self.weights /= self.weights.sum()
         self.cur_best = None
@@ -190,7 +194,7 @@ if train_flag:
             print(f"[{epoch}] [****] Train {epoch_train_loss} Valid {epoch_val_loss}")
             best_val_loss = epoch_val_loss
             epochs_no_improve = 0
-            torch.save(model.state_dict(), "best_model.pth")
+            torch.save(model.state_dict(), f"best_model_{config['test_function']}.pth")
         else:
             print(f"[{epoch}] [////] Train {epoch_train_loss} Valid {epoch_val_loss}")
             epochs_no_improve += 1
@@ -200,12 +204,15 @@ if train_flag:
                 )
                 break
 
-
 """
 TEST
 """
 
-model.load_state_dict(torch.load("best_model.pth", map_location=torch.device("cpu")))
+model.load_state_dict(
+    torch.load(
+        f"best_model_{config['test_function']}.pth", map_location=torch.device("cpu")
+    )
+)
 
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 
@@ -232,4 +239,73 @@ with torch.no_grad():
             x_axis.append(iteration)
             best_y_axis.append((best_y - test_f_opt).item())
 
-np.savez("data/out_model.npz", x=x_axis, y=best_y_axis)
+np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+
+
+def plot_contour_with_points(test_fn, points):
+    # Extract coordinates of points
+    points_np = np.array([p.cpu().detach().numpy().squeeze() for p in points])
+    x_min, x_max = min(points_np[:, 0].min(), -40), max(points_np[:, 0].max(), 40)
+    y_min, y_max = min(points_np[:, 1].min(), -40), max(points_np[:, 1].max(), 40)
+
+    # Adjust the margins
+    margin = 10  # Add some margin around points
+    x1_min, x1_max = x_min - margin, x_max + margin
+    x2_min, x2_max = y_min - margin, y_max + margin
+
+    # Generate a grid of points
+    x1, x2 = np.meshgrid(
+        np.linspace(x1_min, x1_max, 400), np.linspace(x2_min, x2_max, 400)
+    )
+
+    # Evaluate the function on the grid
+    grid_points = np.c_[x1.ravel(), x2.ravel()]
+    z = np.array(
+        [
+            test_fn(torch.tensor(p, dtype=torch.float32).unsqueeze(0).to(device)).item()
+            for p in grid_points
+        ]
+    )
+    z = z.reshape(x1.shape)
+
+    # Create the plot
+    plt.figure(figsize=(10, 8))
+    contour = plt.contourf(x1, x2, z, levels=50, cmap="viridis")
+    plt.colorbar(contour)
+    plt.contour(x1, x2, z, colors="black", linewidths=0.5)
+
+    # Plot the optimal point
+    x_opt_np = test_fn.x_opt.cpu().numpy().squeeze()
+    plt.plot(x_opt_np[0], x_opt_np[1], "g*", markersize=10, label="Optimal Point")
+
+    # Plot the points
+    plt.plot(points_np[:, 0], points_np[:, 1], "ro-", markersize=5, label="Points")
+
+    plt.xlabel("x1")
+    plt.ylabel("x2")
+    plt.title("Contour Plot with Points")
+    plt.legend()
+    plt.savefig(f"viz/viz_new_{n}.png")
+    plt.show()
+
+
+# Example usage with test data and model
+
+n = 0
+# Assuming `test_data` and `x_initial` are defined and available
+for test_fn, _ in test_data[:4]:
+    points = []
+    x = x_initial.clone().detach().to(device)
+    y = test_fn(x)
+
+    # для сравнения включим первую (статичную) точку
+    points.append(x.cpu())
+
+    hidden = model.init_hidden(x.size(0), device)
+    for iteration in range(1, opt_iterations + 1):
+        x, hidden = model(x, y, hidden)
+        points.append(x.cpu())
+        y = test_fn(x)
+    n += 1
+
+    plot_contour_with_points(test_fn, points)

@@ -17,32 +17,11 @@ class CustomLSTM(nn.Module):
             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
 
         self.h2o = nn.Linear(hidden_size, input_size - 1)
-        
-        self.epsilon = 0.05
-        self.cumulative_sum = None
-        self.cumulative_count = None
+        self.hist = None
 
     def forward(self, x, y, initial_states=None):
-        # input_x = torch.cat((x, y), dim=1)
 
-        # normalization
-
-        if self.iteration == 0:
-            self.cumulative_sum = torch.zeros_like(y)
-            self.cumulative_count = torch.zeros_like(y)
-
-        self.cumulative_sum = self.cumulative_sum + y
-        self.cumulative_count = self.cumulative_count + 1
-
-        # Compute running mean and variance
-        running_mean = self.cumulative_sum / self.cumulative_count
-        variance = torch.pow(y - running_mean, 2)
-
-        # Normalize y
-        normalized_y = (y - running_mean) / torch.sqrt(variance + self.epsilon)
-        input_x = torch.cat((x, normalized_y), dim=1)
-
-        self.iteration += 1
+        input_x = torch.cat((x, y), dim=1)
 
         if initial_states is None:
             initial_states = [
@@ -64,10 +43,73 @@ class CustomLSTM(nn.Module):
         return current_input, new_states
 
     def init_hidden(self, batch_size, device):
-        self.iteration = 0
-        self.cumulative_sum = None
-        self.cumulative_count = None
+        self.hist = None
         return None
+
+
+# class CustomLSTM(nn.Module):
+#     def __init__(self, input_size, hidden_size, num_layers=2):
+#         super().__init__()
+#         self.num_layers = num_layers
+#         self.hidden_size = hidden_size
+#         self.layers = nn.ModuleList()
+
+#         for i in range(num_layers):
+#             layer_input_size = input_size if i == 0 else hidden_size
+#             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
+
+#         self.h2o = nn.Linear(hidden_size, input_size - 1)
+
+#         self.epsilon = 0.05
+#         self.cumulative_sum = None
+#         self.cumulative_count = None
+
+#     def forward(self, x, y, initial_states=None):
+#         # input_x = torch.cat((x, y), dim=1)
+
+#         # normalization
+
+#         if self.iteration == 0:
+#             self.cumulative_sum = torch.zeros_like(y)
+#             self.cumulative_count = torch.zeros_like(y)
+
+#         self.cumulative_sum = self.cumulative_sum + y
+#         self.cumulative_count = self.cumulative_count + 1
+
+#         # Compute running mean and variance
+#         running_mean = self.cumulative_sum / self.cumulative_count
+#         variance = torch.pow(y - running_mean, 2)
+
+#         # Normalize y
+#         normalized_y = (y - running_mean) / torch.sqrt(variance + self.epsilon)
+#         input_x = torch.cat((x, normalized_y), dim=1)
+
+#         self.iteration += 1
+
+#         if initial_states is None:
+#             initial_states = [
+#                 (
+#                     torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+#                     torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+#                 )
+#                 for _ in range(self.num_layers)
+#             ]
+
+#         current_input = input_x
+#         new_states = []
+
+#         for i, layer in enumerate(self.layers):
+#             h, c = layer(current_input, initial_states[i])
+#             current_input = h if i < self.num_layers - 1 else self.h2o(h)
+#             new_states.append((h, c))
+
+#         return current_input, new_states
+
+#     def init_hidden(self, batch_size, device):
+#         self.iteration = 0
+#         self.cumulative_sum = None
+#         self.cumulative_count = None
+#         return None
 
 
 class CustomGRU(nn.Module):
