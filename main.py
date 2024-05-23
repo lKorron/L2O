@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -102,7 +102,7 @@ test_function = config["test_function"]
 learn_function1 = config["learn_function1"]
 learn_function2 = config["learn_function2"]
 
-split_ratio = 0.6
+split_ratio = 0.95
 
 split_number = int(np.round(num_batches * split_ratio))
 
@@ -118,11 +118,8 @@ for _ in range(split_number , num_batches):
     train_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
 val_data = []
-for _ in range(split_number):
-    fn = globals()[learn_function1]()
-    val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
-for _ in range(split_number, num_batches):
+for _ in range(num_batches):
     fn = globals()[learn_function2]()
     val_data.append((fn, fn.generate(batch_size, DIMENSION)))
 
