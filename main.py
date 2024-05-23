@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+wandb.login(key="f3c51263b5cc9e607274802cc88b114d57b41ae9")
 run = wandb.init(project="l2o", config=config)
 
 
@@ -58,7 +58,10 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     hidden = model.init_hidden(x.size(0), device)
     total_loss = torch.tensor([0.0]).to(device)
 
+    layer_norm = torch.nn.LayerNorm(x.shape[-1])
+
     for _ in range(opt_iterations):
+        x = layer_norm(x)
         x, hidden = model(x, y, hidden)
         y = fn(x)
         loss = criterion(target, y)

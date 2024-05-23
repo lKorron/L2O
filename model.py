@@ -12,10 +12,10 @@ class CustomLSTM(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.layers = nn.ModuleList()
+        self.layer_norm = torch.nn.LayerNorm(input_size)
 
         for i in range(num_layers):
             layer_input_size = input_size if i == 0 else hidden_size
-            self.layers.append(torch.nn.LayerNorm(layer_input_size))
             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
 
         self.h2o = nn.Linear(hidden_size, output_size)
@@ -40,6 +40,8 @@ class CustomLSTM(nn.Module):
 
         current_input = input_x
         new_states = []
+
+        # current_input = self.layer_norm(current_input)
 
         for i, layer in enumerate(self.layers):
             h, c = layer(current_input, initial_states[i])
