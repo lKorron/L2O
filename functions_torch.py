@@ -4,6 +4,24 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+class Rastrigin(nn.Module):
+    def __init__(self):
+        super(Rastrigin, self).__init__()
+        self.x_opt = None
+        self.A = 10
+
+    def forward(self, x):
+        n = x.size(1)
+        z = x - self.x_opt
+        return self.A * n + torch.sum(
+            z**2 - self.A * torch.cos(2 * torch.pi * z), dim=1
+        ).unsqueeze(1)
+
+    def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * 10 - 5
+        return self.forward(self.x_opt.clone())
+
+
 class Rosenbrock(nn.Module):
     def __init__(self):
         super(Rosenbrock, self).__init__()

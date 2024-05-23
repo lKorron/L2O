@@ -1,8 +1,8 @@
 config = {
     # Task
     "dimension": 2,
-    "learn_function": "Rosenbrock",
-    "test_function": "Rosenbrock",
+    "learn_function": "Rastrigin",
+    "test_function": "Rastrigin",
     "budget": 2 * 3 + 1,
     # Functions number
     "batch": 1024,

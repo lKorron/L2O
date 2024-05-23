@@ -128,7 +128,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial_test = torch.rand(DIMENSION, device=device) * 100 - 50
+x_initial_test = (torch.rand(DIMENSION, device=device) * 100 - 50) / 10
 x_initial = torch.stack([x_initial_test for _ in range(batch_size)])
 
 train_flag = config["train"]
@@ -228,8 +228,8 @@ np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axi
 def plot_contour_with_points(test_fn, points):
     # Extract coordinates of points
     points_np = np.array([p.cpu().detach().numpy().squeeze() for p in points])
-    x_min, x_max = min(points_np[:, 0].min(), -40), max(points_np[:, 0].max(), 40)
-    y_min, y_max = min(points_np[:, 1].min(), -40), max(points_np[:, 1].max(), 40)
+    x_min, x_max = min(points_np[:, 0].min(), -5), max(points_np[:, 0].max(), 5)
+    y_min, y_max = min(points_np[:, 1].min(), -5), max(points_np[:, 1].max(), 5)
 
     # Adjust the margins
     margin = 10  # Add some margin around points
