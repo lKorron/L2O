@@ -30,7 +30,7 @@ class CustomLSTM(nn.Module):
         if self.worst_y is None:
             self.worst_y = y.clone()
         else:
-            self.worst_y = torch.min(self.worst_y, y)
+            self.worst_y = torch.max(self.worst_y, y)
 
         input_x = torch.cat((x, y, self.best_y, self.worst_y), dim=1)
 
