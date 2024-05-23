@@ -19,4 +19,6 @@ config = {
     # Loss
     "last_impact": 2,
     "coef_scale": 5,
+    # Norm
+    "ys_count": 50
 }

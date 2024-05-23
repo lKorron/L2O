@@ -12,7 +12,6 @@ class CustomLSTM(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.layers = nn.ModuleList()
-        self.batch_norm = torch.nn.BatchNorm1d(input_size).to(device)
 
         for i in range(num_layers):
             layer_input_size = input_size if i == 0 else hidden_size
@@ -21,15 +20,21 @@ class CustomLSTM(nn.Module):
         self.h2o = nn.Linear(hidden_size, output_size)
         self.best_y = None
 
-    def forward(self, x, y, initial_states=None):
+    def forward(self, x, y, ys, initial_states=None):
         if self.best_y is None:
             self.best_y = y.clone()
         else:
             self.best_y = torch.min(self.best_y, y)
 
+        layer_norm = torch.nn.LayerNorm(x.shape).to(device)
+        x = layer_norm(x)
+
+
+        y = (y - ys.mean()) / (ys.std() + 1e-5)
+
         input_x = torch.cat((x, y, self.best_y), dim=1)
 
-        input_x = self.batch_norm(input_x)
+
 
 
         if initial_states is None:

@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -52,6 +52,9 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
     criterion = IterationWeightedLoss()
 
+    ys = get_ys(fn, config["ys_count"])
+
+
     x = x.clone().detach().to(device)
     y = fn(x)
 
@@ -59,7 +62,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     total_loss = torch.tensor([0.0]).to(device)
 
     for _ in range(opt_iterations):
-        x, hidden = model(x, y, hidden)
+        x, hidden = model(x, y, ys, hidden)
         y = fn(x)
         loss = criterion(target, y)
         total_loss += loss
@@ -70,6 +73,8 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 
     return total_loss
 
+def get_ys(fn, ys_count):
+    return torch.tensor([fn(torch.rand(DIMENSION, device=device) * 100 - 50)[0].item() for _ in range(ys_count)])
 
 DIMENSION = config["dimension"]
 addition_features = 1
@@ -162,8 +167,10 @@ if train_flag:
                 hidden = model.init_hidden(x.size(0), device)
                 total_loss = torch.tensor([0.0]).to(device)
 
+                ys = get_ys(val_fn, config["ys_count"])
+
                 for _ in range(opt_iterations):
-                    x, hidden = model(x, y, hidden)
+                    x, hidden = model(x, y, ys, hidden)
                     y = val_fn(x)
                     loss = criterion(val_f_opt, y)
                     total_loss += loss
@@ -213,8 +220,10 @@ with torch.no_grad():
 
         hidden = model.init_hidden(x.size(0), device)
         best_y = y
+        ys = get_ys(test_fn, config["ys_count"])
+
         for iteration in range(1, opt_iterations + 1):
-            x, hidden = model(x, y, hidden)
+            x, hidden = model(x, y, ys, hidden)
             y = test_fn(x)
             best_y = min(best_y, y)
             loss = y - test_f_opt
@@ -286,10 +295,13 @@ for test_fn, _ in test_data[:4]:
     points.append(x.cpu())
 
     hidden = model.init_hidden(x.size(0), device)
+    ys = get_ys(test_fn, config["ys_count"])
+
     for iteration in range(1, opt_iterations + 1):
-        x, hidden = model(x, y, hidden)
+        x, hidden = model(x, y, ys, hidden)
         points.append(x.cpu())
         y = test_fn(x)
     n += 1
 
     plot_contour_with_points(test_fn, points)
+
