@@ -1,6 +1,27 @@
 import numpy as np
 
 
+class Rastrigin:
+    def __init__(self):
+        self.x_opt = None
+        self.A = 10
+
+    def forward(self, x):
+        x = np.atleast_2d(x)
+        n = x.shape[1]
+        z = x - self.x_opt
+        return self.A * n + np.sum(
+            z**2 - self.A * np.cos(2 * np.pi * z), axis=1
+        ).reshape(-1, 1)
+
+    def generate(self, batch_size: int, dimension: int) -> np.ndarray:
+        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        return self.forward(self.x_opt)
+
+    def __call__(self, x):
+        return self.forward(x)
+
+
 class Sphere_Abs:
     def __init__(self):
         self.x_opt = None

@@ -15,11 +15,14 @@ test_batch_size = 1
 test_function = config["test_function"]
 test_function_bayes = f"{test_function}_Bayes"
 
+upper = config["upper"]
+lower = config["lower"]
+
 # Методы из коробки
 
 test_data = []
 for _ in range(test_size):
-    fn = Rosenbrock()
+    fn = globals()[test_function]()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
@@ -46,7 +49,7 @@ def optimize_and_save(test_data, optimizer_type, parametrization, budget):
 
 def run_optimizations(test_data, budget):
     params = ng.p.Instrumentation(
-        ng.p.Array(shape=(config["dimension"],), lower=-50, upper=50)
+        ng.p.Array(shape=(config["dimension"],), lower=lower, upper=upper)
     )
 
     optimizers = [
@@ -66,19 +69,19 @@ run_optimizations(test_data, budget)
 
 test_data = []
 for _ in range(test_size):
-    fn = Rosenbrock_Bayes()
+    fn = globals()[test_function_bayes]()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
 
 
 pbounds = {}
 for i in range(1, DIMENSION+1):
-    pbounds[f"x{i}"] = (-50, 50)
+    pbounds[f"x{i}"] = (lower, upper)
 
 x_axis = []
 best_y_axis = []
 
 for test_fn, test_f_opt in tqdm(test_data):
-    fn = lambda x1, x2, x3, x4: -test_fn(x1, x2, x3, x4)
+    fn = lambda *args: -test_fn(*args)
     optimizer = ng.optimizers.BayesianOptimization(
         f=fn,
         pbounds=pbounds,
@@ -94,4 +97,6 @@ for test_fn, test_f_opt in tqdm(test_data):
         best_y = min(y, best_y)
         best_y_axis.append(best_y - test_f_opt)
 
-np.savez("data/BayesianOptimization.npz", x=x_axis, y=best_y_axis)
+np.savez(
+    f"data/BayesianOptimization_{config['test_function']}.npz", x=x_axis, y=best_y_axis
+)

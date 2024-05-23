@@ -1,7 +1,23 @@
 import numpy as np
 
 
-import numpy as np
+class Rastrigin_Bayes:
+    def __init__(self):
+        self.x_opt = None
+        self.A = 10
+
+    def forward(self, *args):
+        x = np.array(args)
+        n = x.size
+        z = x - self.x_opt
+        return self.A * n + np.sum(z**2 - self.A * np.cos(2 * np.pi * z)) - 1
+
+    def generate(self, batch_size: int, dimension: int):
+        self.x_opt = np.random.rand(dimension) * 100 - 50
+        return self.forward(*self.x_opt)
+
+    def __call__(self, *args):
+        return self.forward(*args)
 
 
 class Sphere_Abs_Bayes:

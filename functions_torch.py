@@ -1,5 +1,9 @@
 import torch
 from torch import nn
+from config import config
+
+upper = config["upper"]
+lower = config["lower"]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -18,7 +22,7 @@ class Rastrigin(nn.Module):
         ).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 10 - 5
+        self.x_opt = torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
         return self.forward(self.x_opt.clone())
 
 
@@ -34,7 +38,9 @@ class Rosenbrock(nn.Module):
         ).unsqueeze(1) - torch.tensor(1.0, device=x.device).unsqueeze(0)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
         return self.forward(self.x_opt.clone())
 
 
@@ -53,7 +59,9 @@ class Sphere_Abs(nn.Module):
         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
         self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
         self.coefs2 = torch.rand(batch_size, dimension, device=device) * 10
         return self.forward(self.x_opt)
@@ -71,7 +79,9 @@ class Abs(nn.Module):
         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
         self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
         return self.forward(self.x_opt)
 
@@ -87,7 +97,9 @@ class Sphere:
         return torch.sum(scaled_diffs, dim=1).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * 100 - 50
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
         self.coefs1 = torch.rand(batch_size, dimension, device=device) * 10
         return self.forward(self.x_opt)
 

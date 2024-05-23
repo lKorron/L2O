@@ -103,6 +103,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 learn_function = config["learn_function"]
 test_function = config["test_function"]
+upper = config["upper"]
+lower = config["lower"]
 
 train_data = []
 for _ in range(num_batches):
@@ -128,7 +130,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial_test = (torch.rand(DIMENSION, device=device) * 100 - 50) / 10
+x_initial_test = torch.rand(DIMENSION, device=device) * (upper - lower) + lower
 x_initial = torch.stack([x_initial_test for _ in range(batch_size)])
 
 train_flag = config["train"]
@@ -228,11 +230,11 @@ np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axi
 def plot_contour_with_points(test_fn, points):
     # Extract coordinates of points
     points_np = np.array([p.cpu().detach().numpy().squeeze() for p in points])
-    x_min, x_max = min(points_np[:, 0].min(), -5), max(points_np[:, 0].max(), 5)
-    y_min, y_max = min(points_np[:, 1].min(), -5), max(points_np[:, 1].max(), 5)
+    x_min, x_max = min(points_np[:, 0].min(), lower), max(points_np[:, 0].max(), upper)
+    y_min, y_max = min(points_np[:, 1].min(), lower), max(points_np[:, 1].max(), upper)
 
     # Adjust the margins
-    margin = 10  # Add some margin around points
+    margin = 0.01 * (upper - lower)  # Add some margin around points
     x1_min, x1_max = x_min - margin, x_max + margin
     x2_min, x2_max = y_min - margin, y_max + margin
 
