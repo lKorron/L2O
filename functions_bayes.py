@@ -1,4 +1,8 @@
 import numpy as np
+from config import config
+
+upper = config["upper"]
+lower = config["lower"]
 
 
 class Rastrigin_Bayes:
@@ -13,7 +17,7 @@ class Rastrigin_Bayes:
         return self.A * n + np.sum(z**2 - self.A * np.cos(2 * np.pi * z)) - 1
 
     def generate(self, batch_size: int, dimension: int):
-        self.x_opt = np.random.rand(dimension) * 100 - 50
+        self.x_opt = np.random.rand(dimension) * (upper - lower) + lower
         return self.forward(*self.x_opt)
 
     def __call__(self, *args):
@@ -34,7 +38,7 @@ class Sphere_Abs_Bayes:
         return np.sum(scaled_diffs) - 1
 
     def generate(self, batch_size: int, dimension: int):
-        self.x_opt = np.random.rand(dimension) * 100 - 50
+        self.x_opt = np.random.rand(dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(dimension) * 10
         self.coefs2 = np.random.rand(dimension) * 10
         return self.forward(*self.x_opt)
@@ -54,7 +58,7 @@ class Sphere_Bayes:
         return np.sum(scaled_diffs) - 1
 
     def generate(self, batch_size: int, dimension: int):
-        self.x_opt = np.random.rand(dimension) * 100 - 50
+        self.x_opt = np.random.rand(dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(dimension) * 10
         return self.forward(*self.x_opt)
 
@@ -73,7 +77,7 @@ class Abs_Bayes:
         return np.sum(scaled_diffs) - 1
 
     def generate(self, batch_size: int, dimension: int):
-        self.x_opt = np.random.rand(dimension) * 100 - 50
+        self.x_opt = np.random.rand(dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(dimension) * 10
         return self.forward(*self.x_opt)
 
@@ -91,7 +95,7 @@ class Rosenbrock_Bayes:
         return np.sum(100 * (z[:-1] ** 2 - z[1:]) ** 2 + (z[:-1] - 1) ** 2) - 1
 
     def generate(self, batch_size: int, dimension: int):
-        self.x_opt = np.random.rand(dimension) * 100 - 50
+        self.x_opt = np.random.rand(dimension) * (upper - lower) + lower
         return self.forward(*self.x_opt)
 
     def __call__(self, *args):

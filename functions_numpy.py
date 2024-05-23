@@ -1,4 +1,8 @@
 import numpy as np
+from config import config
+
+upper = config["upper"]
+lower = config["lower"]
 
 
 class Rastrigin:
@@ -15,7 +19,7 @@ class Rastrigin:
         ).reshape(-1, 1)
 
     def generate(self, batch_size: int, dimension: int) -> np.ndarray:
-        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        self.x_opt = np.random.rand(batch_size, dimension) * (upper - lower) + lower
         return self.forward(self.x_opt)
 
     def __call__(self, x):
@@ -35,7 +39,7 @@ class Sphere_Abs:
         return np.sum(scaled_diffs, axis=1).reshape(-1, 1)
 
     def generate(self, batch_size: int, dimension: int) -> np.ndarray:
-        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        self.x_opt = np.random.rand(batch_size, dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(batch_size, dimension) * 10
         self.coefs2 = np.random.rand(batch_size, dimension) * 10
         return self.forward(self.x_opt)
@@ -54,7 +58,7 @@ class Sphere:
         return np.sum(scaled_diffs, axis=1).reshape(-1, 1)
 
     def generate(self, batch_size: int, dimension: int) -> np.ndarray:
-        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        self.x_opt = np.random.rand(batch_size, dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(batch_size, dimension) * 10
         return self.forward(self.x_opt)
 
@@ -72,7 +76,7 @@ class Abs:
         return np.sum(scaled_diffs, axis=1).reshape(-1, 1)
 
     def generate(self, batch_size: int, dimension: int) -> np.ndarray:
-        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        self.x_opt = np.random.rand(batch_size, dimension) * (upper - lower) + lower
         self.coefs1 = np.random.rand(batch_size, dimension) * 10
         return self.forward(self.x_opt)
 
@@ -94,7 +98,7 @@ class Rosenbrock:
         )
 
     def generate(self, batch_size: int, dimension: int) -> np.ndarray:
-        self.x_opt = np.random.rand(batch_size, dimension) * 100 - 50
+        self.x_opt = np.random.rand(batch_size, dimension) * (upper - lower) + lower
         return self.forward(self.x_opt)
 
     def __call__(self, x):
