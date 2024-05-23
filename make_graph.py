@@ -6,7 +6,6 @@ import torch
 
 from config import config
 
-# TODO add random
 our_data = np.load(f'data/out_model_{config["test_function"]}.npz')
 bo_data = np.load(f"data/ParametrizedBO_{config['test_function']}.npz")
 random_data = np.load(f"data/RandomSearchMaker_{config['test_function']}.npz")

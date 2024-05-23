@@ -72,7 +72,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 
 
 DIMENSION = config["dimension"]
-addition_features = 1
+addition_features = 2
 input_size = DIMENSION + 1 + addition_features
 output_size = DIMENSION
 opt_iterations = config["budget"] - 1
