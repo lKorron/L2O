@@ -12,7 +12,7 @@ class CustomLSTM(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.layers = nn.ModuleList()
-        self.batch_norm = torch.nn.BatchNorm1d(input_size)
+        self.batch_norm = torch.nn.BatchNorm1d(input_size).to(device)
 
         for i in range(num_layers):
             layer_input_size = input_size if i == 0 else hidden_size
