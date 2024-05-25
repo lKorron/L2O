@@ -48,7 +48,7 @@ class IterationWeightedLoss(nn.Module):
         return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
 
 
-def train(model, optimizer, x, fn, target, opt_iterations):
+def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
     model.train()
     criterion = IterationWeightedLoss()
 
@@ -67,6 +67,7 @@ def train(model, optimizer, x, fn, target, opt_iterations):
     optimizer.zero_grad()
     total_loss.backward()
     optimizer.step()
+    scheduler.step()
 
     return total_loss
 
@@ -95,6 +96,10 @@ model = model.to(device)
 wandb.watch(model)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer, max_lr=learning_rate, steps_per_epoch=num_batches, epochs=num_epoch
+)
+
 
 # о нем надо еще подумать
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
@@ -143,7 +148,9 @@ if train_flag:
         random.shuffle(train_data)
         for fn, f_opt in train_data:
             target = f_opt
-            loss = train(model, optimizer, x_initial, fn, target, opt_iterations)
+            loss = train(
+                model, optimizer, scheduler, x_initial, fn, target, opt_iterations
+            )
             summ += loss
             epoch_train_loss += loss / batch_size
             losses.append(summ / num_iter)
