@@ -4,8 +4,8 @@ config = {
     "learn_function": "Rastrigin",
     "test_function": "Rastrigin",
     "budget": 2 * 3 + 1,
-    "lower": -50,
-    "upper": 50,
+    "lower": -5,
+    "upper": 5,
     # Functions number
     "batch": 1024,
     "num_batches": 3,

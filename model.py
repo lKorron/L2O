@@ -19,7 +19,6 @@ class CustomLSTM(nn.Module):
 
         self.h2o = nn.Linear(hidden_size, output_size)
         self.best_y = None
-        self.worst_y = None
 
     def forward(self, x, y, initial_states=None):
         if self.best_y is None:
@@ -27,12 +26,10 @@ class CustomLSTM(nn.Module):
         else:
             self.best_y = torch.min(self.best_y, y)
 
-        if self.worst_y is None:
-            self.worst_y = y.clone()
-        else:
-            self.worst_y = torch.max(self.worst_y, y)
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=device)
+        x = layer_norm(x)
 
-        input_x = torch.cat((x, y, self.best_y, self.worst_y), dim=1)
+        input_x = torch.cat((x, y, self.best_y), dim=1)
 
         if initial_states is None:
             initial_states = [
@@ -55,7 +52,6 @@ class CustomLSTM(nn.Module):
 
     def init_hidden(self, batch_size, device):
         self.best_y = None
-        self.worst_y = None
         return None
 
 
