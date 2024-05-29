@@ -1,9 +1,9 @@
 config = {
     # Task
     "dimension": 2,
-    "learn_function": "Rastrigin",
-    "test_function": "Rastrigin",
-    "budget": 2 * 2 + 1,
+    "learn_function": "Sphere",
+    "test_function": "Sphere",
+    "budget": 2 * 2 + 2,
     "lower": -5,
     "upper": 5,
     # Functions number

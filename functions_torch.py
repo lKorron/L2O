@@ -22,7 +22,9 @@ class Rastrigin(nn.Module):
         ).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
-        self.x_opt = torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
         return self.forward(self.x_opt.clone())
 
 
@@ -87,8 +89,9 @@ class Abs(nn.Module):
 
 
 # Sphere
-class Sphere:
-    def init(self):
+class Sphere(nn.Module):
+    def __init__(self):
+        super().__init__()
         self.x_opt = None
         self.coefs1 = None
 
