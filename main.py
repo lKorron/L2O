@@ -100,10 +100,6 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer, max_lr=learning_rate, steps_per_epoch=num_batches, epochs=num_epoch
 )
 
-
-# о нем надо еще подумать
-# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
-
 # Генерация функций для тренировки, валидации, теста
 
 learn_function = config["learn_function"]
@@ -233,6 +229,31 @@ with torch.no_grad():
 
 np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
 
+x_axis = []
+best_y_axis = []
+
+with torch.no_grad():
+    for test_fn, test_f_opt in test_data:
+        x = x_initial.clone().detach().to(device)
+        y = test_fn(x)
+
+        # для сравнения включим первую (статичную) точку
+        x_axis.append(0)
+        best_y_axis.append((y - test_f_opt).mean().item())
+
+        hidden = model.init_hidden(x.size(0), device)
+        best_y = y
+        for iteration in range(1, opt_iterations + 1):
+            x, hidden = model(x, y, hidden)
+            y = test_fn(x)
+            best_y = min(best_y, y)
+            loss = y - test_f_opt
+
+            x_axis.append(iteration)
+            best_y_axis.append((best_y - test_f_opt).item())
+
+np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+
 
 def plot_contour_with_points(test_fn, points):
     # Extract coordinates of points
@@ -287,18 +308,18 @@ def plot_contour_with_points(test_fn, points):
 
 
 n = 0
-for test_fn, _ in test_data[:4]:
-    points = []
-    x = x_initial.clone().detach().to(device)
-    y = test_fn(x)
+# for test_fn, _ in test_data[:4]:
+#     points = []
+#     x = x_initial.clone().detach().to(device)
+#     y = test_fn(x)
 
-    points.append(x.cpu())
+#     points.append(x.cpu())
 
-    hidden = model.init_hidden(x.size(0), device)
-    for iteration in range(1, opt_iterations + 1):
-        x, hidden = model(x, y, hidden)
-        points.append(x.cpu())
-        y = test_fn(x)
-    n += 1
+#     hidden = model.init_hidden(x.size(0), device)
+#     for iteration in range(1, opt_iterations + 1):
+#         x, hidden = model(x, y, hidden)
+#         points.append(x.cpu())
+#         y = test_fn(x)
+#     n += 1
 
-    plot_contour_with_points(test_fn, points)
+#     plot_contour_with_points(test_fn, points)

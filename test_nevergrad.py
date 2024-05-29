@@ -42,9 +42,36 @@ def optimize_and_save(test_data, optimizer_type, parametrization, budget):
             best_y = min(best_y, y)
             best_y_axis.append((best_y - test_f_opt).item())
 
+    np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+
     file_name = f"data/{optimizer_name}_{config['test_function']}.npz"
     np.savez(file_name, x=x_axis, y=best_y_axis)
     print(f"Data saved to {file_name}")
+
+    solved = np.zeros(optimizer.budget)
+    tau = 20
+
+    for test_fn, test_f_opt in tqdm(test_data):
+        optimizer = optimizer_type(parametrization=parametrization, budget=budget)
+        best_y = float("+inf")
+        for i in range(optimizer.budget):
+            x = optimizer.ask()
+            y = test_fn(*x.args)
+            y = float(y)
+
+            epsilon = 1e-5
+            minn = test_f_opt
+            shift = abs(minn) + epsilon
+            solved[i] += 1 if (y + shift) / (minn + shift) <= tau else 0
+
+            optimizer.tell(x, y)
+            x_axis.append(i)
+            best_y = min(best_y, y)
+            best_y_axis.append((best_y - test_f_opt).item())
+    solved /= test_size
+    print(solved)
+
+    np.savez(f"profile/out_model_{config['test_function']}.npz", y=solved)
 
 
 def run_optimizations(test_data, budget):

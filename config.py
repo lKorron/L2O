@@ -3,7 +3,7 @@ config = {
     "dimension": 2,
     "learn_function": "Rastrigin",
     "test_function": "Rastrigin",
-    "budget": 2 * 3 + 1,
+    "budget": 2 * 2 + 1,
     "lower": -5,
     "upper": 5,
     # Functions number
