@@ -84,6 +84,8 @@ def run_optimizations(test_data, budget):
         ng.optimizers.CMAbounded,
         ng.optimizers.BayesOptimBO,
         ng.optimizers.BO,
+        ng.optimizers.DE,
+        ng.optimizers.PSO,
     ]
 
     for optimizer in optimizers:
@@ -94,11 +96,15 @@ run_optimizations(test_data, budget)
 
 # BayesianOptimization
 
+
+def convert_kwargs_to_args(fn, kwargs):
+    return fn(**kwargs)
+
+
 test_data = []
 for _ in range(test_size):
     fn = globals()[test_function_bayes]()
     test_data.append((fn, fn.generate(test_batch_size, DIMENSION)))
-
 
 pbounds = {}
 for i in range(1, DIMENSION + 1):
@@ -110,14 +116,14 @@ best_y_axis = []
 for test_fn, test_f_opt in tqdm(test_data):
     fn = lambda *args: -test_fn(*args)
     optimizer = ng.optimizers.BayesianOptimization(
-        f=fn,
+        f=lambda **kwargs: fn(*convert_kwargs_to_args(test_fn, kwargs)),
         pbounds=pbounds,
         random_state=42,
     )
     optimizer.maximize(init_points=1, n_iter=budget)
     best_y = float("+inf")
     for i, res in enumerate(optimizer.res):
-        xs = optimizer.res[i]["params"].values()
+        xs = list(optimizer.res[i]["params"].values())
         value = test_fn(*xs)
         x_axis.append(i)
         y = test_fn(*xs)

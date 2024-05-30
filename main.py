@@ -37,13 +37,13 @@ class IterationWeightedLoss(nn.Module):
     def forward(self, best_y, finded_y):
         self.iteration += 1
 
-        # if self.mode == "min":
-        #     if self.iteration == 1:
-        #         self.cur_best = best_y.clone()
-        #     else:
-        #         self.cur_best = torch.min(self.cur_best, best_y)
-        # else:
-        #     self.cur_best = best_y
+        if self.mode == "min":
+            if self.iteration == 1:
+                self.cur_best = best_y.clone()
+            else:
+                self.cur_best = torch.min(self.cur_best, best_y)
+        else:
+            self.cur_best = best_y
 
         return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
 
@@ -64,10 +64,10 @@ def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
         loss = criterion(target, y)
         total_loss += loss
 
-    optimizer.zero_grad()
     total_loss.backward()
     optimizer.step()
-    # scheduler.step()
+    optimizer.zero_grad()
+    # scheduler.step() 
 
     return total_loss
 

@@ -26,7 +26,7 @@ model = globals()[model_name](
 )
 model = model.to(device)
 
-# Генерация функций для тренировки, валидации, теста
+# Генерация функций для теста
 
 test_function = config["test_function"]
 upper = config["upper"]
@@ -75,36 +75,6 @@ with torch.no_grad():
             best_y_axis.append((best_y - test_f_opt).item())
 
 np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
-
-solved = np.zeros(opt_iterations + 1)
-tau = 1.1
-
-with torch.no_grad():
-    for test_fn, test_f_opt in test_data:
-        x = x_initial.clone().detach().to(device)
-        y = test_fn(x)
-
-        epsilon = 1 + 1e-5
-        minn = test_f_opt
-        shift = abs(minn) + epsilon
-
-        # для сравнения включим первую (статичную) точку
-        print((y + shift) / (minn + shift))
-        x_axis.append(0)
-        solved[0] += 1 if (y + shift) / (minn + shift) <= tau else 0
-
-        hidden = model.init_hidden(x.size(0), device)
-        best_y = y
-        for iteration in range(1, opt_iterations + 1):
-            x, hidden = model(x, y, hidden)
-            y = test_fn(x)
-            best_y = min(best_y, y)
-            solved[iteration] += 1 if (y - minn) <= 40 else 0
-
-solved /= test_size
-print(solved)
-
-np.savez(f"profile/out_model_{config['test_function']}.npz", y=solved)
 
 
 """

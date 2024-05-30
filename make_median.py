@@ -25,8 +25,8 @@ def compute_performance_profile(x_axis, best_y_axis):
     for iteration in unique_iterations:
         indices = [i for i, x in enumerate(x_axis) if x == iteration]
         y_values = [best_y_axis[i] for i in indices]
-        percentage = sum(1 for y in y_values if y <= 10) / len(y_values)
-        iteration_dict[iteration] = percentage
+        median = np.median([-np.log10(y) for y in y_values])
+        iteration_dict[iteration] = median
     return iteration_dict
 
 
