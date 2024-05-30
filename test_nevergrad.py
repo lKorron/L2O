@@ -42,7 +42,7 @@ def optimize_and_save(test_data, optimizer_type, parametrization, budget):
             best_y = min(best_y, y)
             best_y_axis.append((best_y - test_f_opt).item())
 
-    np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+    # np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
 
     file_name = f"data/{optimizer_name}_{config['test_function']}.npz"
     np.savez(file_name, x=x_axis, y=best_y_axis)
@@ -71,7 +71,7 @@ def optimize_and_save(test_data, optimizer_type, parametrization, budget):
     solved /= test_size
     print(solved)
 
-    np.savez(f"profile/out_model_{config['test_function']}.npz", y=solved)
+    np.savez(f"profile/{optimizer_name}_{config['test_function']}.npz", y=solved)
 
 
 def run_optimizations(test_data, budget):
@@ -101,7 +101,7 @@ for _ in range(test_size):
 
 
 pbounds = {}
-for i in range(1, DIMENSION+1):
+for i in range(1, DIMENSION + 1):
     pbounds[f"x{i}"] = (lower, upper)
 
 x_axis = []
