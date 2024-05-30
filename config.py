@@ -4,8 +4,8 @@ config = {
     "learn_function": "Sphere",
     "test_function": "Sphere",
     "budget": 2 * 2 + 2,
-    "lower": -5,
-    "upper": 5,
+    "lower": -50,
+    "upper": 50,
     # Functions number
     "batch": 1024,
     "num_batches": 3,
