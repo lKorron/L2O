@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from config import config
 
+config["test_function"] = "Sphere"
+
 # List of filenames and corresponding labels
 data_files = {
     "Our Model": f"data/out_model_{config['test_function']}.npz",
@@ -9,6 +11,8 @@ data_files = {
     "Random Search": f"data/RandomSearchMaker_{config['test_function']}.npz",
     "Bayes Optim": f"data/BayesOptim_{config['test_function']}.npz",
     "CMA-ES": f"data/ParametrizedCMA_{config['test_function']}.npz",
+    "PSO": f"data/ConfPSO_{config['test_function']}.npz",
+    "DE": f"data/DifferentialEvolution_{config['test_function']}.npz",
 }
 
 
@@ -25,7 +29,7 @@ def compute_performance_profile(x_axis, best_y_axis):
     for iteration in unique_iterations:
         indices = [i for i, x in enumerate(x_axis) if x == iteration]
         y_values = [best_y_axis[i] for i in indices]
-        percentage = sum(1 for y in y_values if y <= 10) / len(y_values)
+        percentage = sum(1 for y in y_values if y <= 100) / len(y_values) * 100
         iteration_dict[iteration] = percentage
     return iteration_dict
 
@@ -40,10 +44,10 @@ for label, file in data_files.items():
 plt.figure(figsize=(10, 6))
 
 for label, pp in performance_profiles.items():
-    plt.plot(list(pp.keys()), list(pp.values()), label=label, marker="o")
+    plt.plot(list(pp.keys()), list(pp.values()), label=label, marker="*")
 
 plt.xlabel("Iteration")
-plt.ylabel("Percentage of $y$ ≤ 10")
+plt.ylabel("Percentage of $y$ ≤ 100")
 plt.title("Performance Profile")
 plt.legend()
 plt.grid(True)

@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from config import config
 
+config["test_function"] = "Sphere"
+
 # List of filenames and corresponding labels
 data_files = {
     "Our Model": f"data/out_model_{config['test_function']}.npz",
@@ -9,6 +11,8 @@ data_files = {
     "Random Search": f"data/RandomSearchMaker_{config['test_function']}.npz",
     "Bayes Optim": f"data/BayesOptim_{config['test_function']}.npz",
     "CMA-ES": f"data/ParametrizedCMA_{config['test_function']}.npz",
+    "PSO": f"data/ConfPSO_{config['test_function']}.npz",
+    "DE": f"data/DifferentialEvolution_{config['test_function']}.npz",
 }
 
 
@@ -40,12 +44,12 @@ for label, file in data_files.items():
 plt.figure(figsize=(10, 6))
 
 for label, pp in performance_profiles.items():
-    plt.plot(list(pp.keys()), list(pp.values()), label=label, marker="o")
+    plt.plot(list(pp.keys()), list(pp.values()), label=label, marker="*")
 
 plt.xlabel("Iteration")
-plt.ylabel("Percentage of $y$ ≤ 10")
-plt.title("Performance Profile")
+plt.ylabel("median -log10(y - y_min)")
+plt.title("Median")
 plt.legend()
 plt.grid(True)
-plt.savefig(f"performance_profile_{config['test_function']}")
+plt.savefig(f"method_{config['test_function']}")
 plt.show()
