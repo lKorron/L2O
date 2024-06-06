@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-wandb.login(key=os.environ["WANDB_API"])
+# wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -66,8 +66,8 @@ def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
 
     total_loss.backward()
     optimizer.step()
+    scheduler.step()
     optimizer.zero_grad()
-    # scheduler.step() 
 
     return total_loss
 

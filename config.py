@@ -12,7 +12,7 @@ config = {
     "test_size": 100,
     # ML staff
     "train": True,
-    "model": "CustomBatchedLSTM",
+    "model": "CleanLSTM",
     "layers": 2,
     "lr": 3e-4,
     "hidden": 512,
