@@ -1,9 +1,9 @@
 config = {
     # Task
-    "dimension": 2,
+    "dimension": 4,
     "learn_function": "Sphere",
     "test_function": "Sphere",
-    "budget": 2 * 2 + 2,
+    "budget": 2 * 4 + 2,
     "lower": -50,
     "upper": 50,
     # Functions number
@@ -12,7 +12,7 @@ config = {
     "test_size": 100,
     # ML staff
     "train": True,
-    "model": "CustomLSTM",
+    "model": "CustomBatchedLSTM",
     "layers": 2,
     "lr": 3e-4,
     "hidden": 512,

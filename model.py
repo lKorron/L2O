@@ -12,10 +12,12 @@ class CustomLSTM(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.layers = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
 
         for i in range(num_layers):
             layer_input_size = input_size if i == 0 else hidden_size
             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
+            self.batch_norms.append(nn.BatchNorm1d(hidden_size))
 
         self.h2o = nn.Linear(hidden_size, output_size)
         self.best_y = None
@@ -26,7 +28,86 @@ class CustomLSTM(nn.Module):
         else:
             self.best_y = torch.min(self.best_y, y)
 
-        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=device)
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
+        x = layer_norm(x)
+
+        input_x = torch.cat((x, y, self.best_y), dim=1)
+
+        if initial_states is None:
+            initial_states = [
+                (
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                )
+                for _ in range(self.num_layers)
+            ]
+
+        current_input = input_x
+        new_states = []
+
+        for i, layer in enumerate(self.layers):
+            h, c = layer(current_input, initial_states[i])
+            h = self.batch_norms[i](h)
+            current_input = h if i < self.num_layers - 1 else self.h2o(h)
+            new_states.append((h, c))
+
+        return current_input, new_states
+
+    def init_hidden(self, batch_size, device):
+        self.best_y = None
+        return None
+
+
+class BatchNormLSTMCell(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(BatchNormLSTMCell, self).__init__()
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+        self.Wx = nn.Linear(input_size, 4 * hidden_size, bias=False)
+        self.Wh = nn.Linear(hidden_size, 4 * hidden_size, bias=False)
+        self.bn_x = nn.BatchNorm1d(4 * hidden_size)
+        self.bn_h = nn.BatchNorm1d(4 * hidden_size)
+        self.gamma = nn.Parameter(torch.ones(4 * hidden_size))
+        self.beta = nn.Parameter(torch.zeros(4 * hidden_size))
+
+    def forward(self, x, hidden):
+        h, c = hidden
+        gates_x = self.bn_x(self.Wx(x))
+        gates_h = self.bn_h(self.Wh(h))
+        gates = gates_x + gates_h
+
+        f, i, o, g = gates.chunk(4, 1)
+        f = torch.sigmoid(f)
+        i = torch.sigmoid(i)
+        o = torch.sigmoid(o)
+        g = torch.tanh(g)
+
+        c_next = f * c + i * g
+        h_next = o * torch.tanh(c_next)
+        return h_next, c_next
+
+
+class CustomBatchedLSTM(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, num_layers=2):
+        super().__init__()
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.layers = nn.ModuleList()
+
+        for i in range(num_layers):
+            layer_input_size = input_size if i == 0 else hidden_size
+            self.layers.append(BatchNormLSTMCell(layer_input_size, hidden_size))
+
+        self.h2o = nn.Linear(hidden_size, output_size)
+        self.best_y = None
+
+    def forward(self, x, y, initial_states=None):
+        if self.best_y is None:
+            self.best_y = y.clone()
+        else:
+            self.best_y = torch.min(self.best_y, y)
+
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
         x = layer_norm(x)
 
         input_x = torch.cat((x, y, self.best_y), dim=1)
@@ -53,6 +134,56 @@ class CustomLSTM(nn.Module):
     def init_hidden(self, batch_size, device):
         self.best_y = None
         return None
+
+
+# class CustomLSTM(nn.Module):
+
+#     def __init__(self, input_size, output_size, hidden_size, num_layers=2):
+#         super().__init__()
+#         self.num_layers = num_layers
+#         self.hidden_size = hidden_size
+#         self.layers = nn.ModuleList()
+
+#         for i in range(num_layers):
+#             layer_input_size = input_size if i == 0 else hidden_size
+#             self.layers.append(torch.nn.LSTMCell(layer_input_size, hidden_size))
+
+#         self.h2o = nn.Linear(hidden_size, output_size)
+#         self.best_y = None
+
+#     def forward(self, x, y, initial_states=None):
+#         if self.best_y is None:
+#             self.best_y = y.clone()
+#         else:
+#             self.best_y = torch.min(self.best_y, y)
+
+#         layer_norm = torch.nn.LayerNorm(x.shape[-1], device=device)
+#         x = layer_norm(x)
+
+#         input_x = torch.cat((x, y, self.best_y), dim=1)
+
+#         if initial_states is None:
+#             initial_states = [
+#                 (
+#                     torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+#                     torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+#                 )
+#                 for _ in range(self.num_layers)
+#             ]
+
+#         current_input = input_x
+#         new_states = []
+
+#         for i, layer in enumerate(self.layers):
+#             h, c = layer(current_input, initial_states[i])
+#             current_input = h if i < self.num_layers - 1 else self.h2o(h)
+#             new_states.append((h, c))
+
+#         return current_input, new_states
+
+#     def init_hidden(self, batch_size, device):
+#         self.best_y = None
+#         return None
 
 
 # class CustomLSTM(nn.Module):
