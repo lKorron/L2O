@@ -42,10 +42,10 @@ class IterationWeightedLoss(nn.Module):
                 self.cur_best = best_y.clone()
             else:
                 self.cur_best = torch.min(self.cur_best, best_y)
-        else:
-            self.cur_best = best_y
+        # else:
+        #     self.cur_best = best_y
 
-        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
+        return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
 
 
 def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
