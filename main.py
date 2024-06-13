@@ -42,13 +42,15 @@ class IterationWeightedLoss(nn.Module):
                 self.cur_best = best_y.clone()
             else:
                 self.cur_best = torch.min(self.cur_best, best_y)
+        else:
+            self.cur_best = best_y
 
-        return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
+        return self.weights[self.iteration - 1] * (finded_y - best_y).mean(dim=0)
 
 
-def train(model, optimizer, x, fn, target, opt_iterations):
+def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
     model.train()
-    criterion = IterationWeightedLoss(mode="min")
+    criterion = IterationWeightedLoss()
 
     x = x.clone().detach().to(device)
     y = fn(x)
@@ -64,13 +66,15 @@ def train(model, optimizer, x, fn, target, opt_iterations):
 
     total_loss.backward()
     optimizer.step()
+    scheduler.step()
     optimizer.zero_grad()
 
     return total_loss
 
 
 DIMENSION = config["dimension"]
-input_size = DIMENSION + 1
+addition_features = 1
+input_size = DIMENSION + 1 + addition_features
 output_size = DIMENSION
 opt_iterations = config["budget"] - 1
 
@@ -83,21 +87,25 @@ test_batch_size = 1
 
 model_name = config["model"]
 
-model = globals()[model_name](input_size, config["hidden"], config["layers"])
+model = globals()[model_name](
+    input_size, output_size, config["hidden"], config["layers"]
+)
 model = model.to(device)
 
 # инфа по градиентам
 wandb.watch(model)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-# о нем надо еще подумать
-# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer, max_lr=learning_rate, steps_per_epoch=num_batches, epochs=num_epoch
+)
 
 # Генерация функций для тренировки, валидации, теста
 
 learn_function = config["learn_function"]
 test_function = config["test_function"]
+upper = config["upper"]
+lower = config["lower"]
 
 learn_function1 = config["learn_function1"]
 learn_function2 = config["learn_function2"]
@@ -137,7 +145,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial_test = torch.rand(DIMENSION, device=device) * 100 - 50
+x_initial_test = torch.rand(DIMENSION, device=device) * (upper - lower) + lower
 x_initial = torch.stack([x_initial_test for _ in range(batch_size)])
 
 train_flag = config["train"]
@@ -155,7 +163,9 @@ if train_flag:
 
         for fn, f_opt in train_data:
             target = f_opt
-            loss = train(model, optimizer, x_initial, fn, target, opt_iterations)
+            loss = train(
+                model, optimizer, scheduler, x_initial, fn, target, opt_iterations
+            )
             summ += loss
             epoch_train_loss += loss / batch_size
             losses.append(summ / num_iter)
@@ -169,7 +179,7 @@ if train_flag:
         epoch_val_loss = 0
         with torch.no_grad():
             for val_fn, val_f_opt in val_data:
-                criterion = IterationWeightedLoss(mode="min")
+                criterion = IterationWeightedLoss()
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)
@@ -238,15 +248,40 @@ with torch.no_grad():
 
 np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
 
+x_axis = []
+best_y_axis = []
+
+with torch.no_grad():
+    for test_fn, test_f_opt in test_data:
+        x = x_initial.clone().detach().to(device)
+        y = test_fn(x)
+
+        # для сравнения включим первую (статичную) точку
+        x_axis.append(0)
+        best_y_axis.append((y - test_f_opt).mean().item())
+
+        hidden = model.init_hidden(x.size(0), device)
+        best_y = y
+        for iteration in range(1, opt_iterations + 1):
+            x, hidden = model(x, y, hidden)
+            y = test_fn(x)
+            best_y = min(best_y, y)
+            loss = y - test_f_opt
+
+            x_axis.append(iteration)
+            best_y_axis.append((best_y - test_f_opt).item())
+
+np.savez(f"data/out_model_{config['test_function']}.npz", x=x_axis, y=best_y_axis)
+
 
 def plot_contour_with_points(test_fn, points):
     # Extract coordinates of points
     points_np = np.array([p.cpu().detach().numpy().squeeze() for p in points])
-    x_min, x_max = min(points_np[:, 0].min(), -40), max(points_np[:, 0].max(), 40)
-    y_min, y_max = min(points_np[:, 1].min(), -40), max(points_np[:, 1].max(), 40)
+    x_min, x_max = min(points_np[:, 0].min(), lower), max(points_np[:, 0].max(), upper)
+    y_min, y_max = min(points_np[:, 1].min(), lower), max(points_np[:, 1].max(), upper)
 
     # Adjust the margins
-    margin = 10  # Add some margin around points
+    margin = 0.01 * (upper - lower)  # Add some margin around points
     x1_min, x1_max = x_min - margin, x_max + margin
     x2_min, x2_max = y_min - margin, y_max + margin
 
@@ -278,6 +313,11 @@ def plot_contour_with_points(test_fn, points):
     # Plot the points
     plt.plot(points_np[:, 0], points_np[:, 1], "ro-", markersize=5, label="Points")
 
+    # Highlight the first point
+    plt.plot(
+        points_np[0, 0], points_np[0, 1], "yo", markersize=5, label="Initial Point"
+    )
+
     plt.xlabel("x1")
     plt.ylabel("x2")
     plt.title("Contour Plot with Points")
@@ -286,23 +326,19 @@ def plot_contour_with_points(test_fn, points):
     plt.show()
 
 
-# Example usage with test data and model
-
 n = 0
-# Assuming `test_data` and `x_initial` are defined and available
-for test_fn, _ in test_data[:4]:
-    points = []
-    x = x_initial.clone().detach().to(device)
-    y = test_fn(x)
+# for test_fn, _ in test_data[:4]:
+#     points = []
+#     x = x_initial.clone().detach().to(device)
+#     y = test_fn(x)
 
-    # для сравнения включим первую (статичную) точку
-    points.append(x.cpu())
+#     points.append(x.cpu())
 
-    hidden = model.init_hidden(x.size(0), device)
-    for iteration in range(1, opt_iterations + 1):
-        x, hidden = model(x, y, hidden)
-        points.append(x.cpu())
-        y = test_fn(x)
-    n += 1
+#     hidden = model.init_hidden(x.size(0), device)
+#     for iteration in range(1, opt_iterations + 1):
+#         x, hidden = model(x, y, hidden)
+#         points.append(x.cpu())
+#         y = test_fn(x)
+#     n += 1
 
-    plot_contour_with_points(test_fn, points)
+#     plot_contour_with_points(test_fn, points)

@@ -2,13 +2,15 @@ config = {
     # Task
     "dimension": 4,
     "learn_function": "Sphere",
+    "test_function": "Sphere",
     "learn_function1": "Sphere",
-    "learn_function2": "Abs",
-    "test_function": "Abs",
+    "learn_function2": "Sphere",
     "budget": 2 * 4 + 2,
+    "lower": -50,
+    "upper": 50,
     # Functions number
     "batch": 1024,
-    "num_batches": 20,
+    "num_batches": 3,
     "test_size": 100,
     # ML staff
     "train": True,
