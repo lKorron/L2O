@@ -48,7 +48,7 @@ class IterationWeightedLoss(nn.Module):
         return self.weights[self.iteration - 1] * (finded_y - self.cur_best).mean(dim=0)
 
 
-def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
+def train(model, optimizer, x, fn, target, opt_iterations):
     model.train()
     criterion = IterationWeightedLoss(mode="min")
 
@@ -66,7 +66,6 @@ def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
 
     total_loss.backward()
     optimizer.step()
-    scheduler.step()
     optimizer.zero_grad()
 
     return total_loss
@@ -96,9 +95,6 @@ model = model.to(device)
 wandb.watch(model)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    optimizer, max_lr=learning_rate, steps_per_epoch=num_batches, epochs=num_epoch
-)
 
 # Генерация функций для тренировки, валидации, теста
 
@@ -164,7 +160,7 @@ if train_flag:
         for fn, f_opt in train_data:
             target = f_opt
             loss = train(
-                model, optimizer, scheduler, x_initial, fn, target, opt_iterations
+                model, optimizer, x_initial, fn, target, opt_iterations
             )
             summ += loss
             epoch_train_loss += loss / batch_size
