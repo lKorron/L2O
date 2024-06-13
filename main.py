@@ -145,7 +145,7 @@ losses = []
 summ = 0
 num_iter = 1
 
-x_initial_test = torch.rand(DIMENSION, device=device) * (upper - lower) + lower
+x_initial_test = torch.rand(DIMENSION, device=device) * 100 - 50
 x_initial = torch.stack([x_initial_test for _ in range(batch_size)])
 
 train_flag = config["train"]
