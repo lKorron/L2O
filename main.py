@@ -50,7 +50,7 @@ class IterationWeightedLoss(nn.Module):
 
 def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
     model.train()
-    criterion = IterationWeightedLoss()
+    criterion = IterationWeightedLoss(mode="min")
 
     x = x.clone().detach().to(device)
     y = fn(x)
@@ -179,7 +179,7 @@ if train_flag:
         epoch_val_loss = 0
         with torch.no_grad():
             for val_fn, val_f_opt in val_data:
-                criterion = IterationWeightedLoss()
+                criterion = IterationWeightedLoss(mode="min")
                 x = x_initial.clone().detach()
                 x = x.to(device)
                 y = val_fn(x)
