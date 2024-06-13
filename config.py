@@ -9,7 +9,7 @@ config = {
     "lower": -50,
     "upper": 50,
     # Functions number
-    "batch": 1,
+    "batch": 1024,
     "num_batches": 3,
     "test_size": 100,
     # ML staff
