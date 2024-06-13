@@ -74,7 +74,7 @@ def train(model, optimizer, scheduler, x, fn, target, opt_iterations):
 
 DIMENSION = config["dimension"]
 addition_features = 1
-input_size = DIMENSION + 1 + addition_features
+input_size = DIMENSION + 1
 output_size = DIMENSION
 opt_iterations = config["budget"] - 1
 
@@ -88,7 +88,7 @@ test_batch_size = 1
 model_name = config["model"]
 
 model = globals()[model_name](
-    input_size, output_size, config["hidden"], config["layers"]
+    input_size, config["hidden"], config["layers"]
 )
 model = model.to(device)
 
