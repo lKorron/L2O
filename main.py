@@ -13,7 +13,7 @@ from model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# wandb.login(key=os.environ["WANDB_API"])
+wandb.login(key=os.environ["WANDB_API"])
 run = wandb.init(project="l2o", config=config)
 
 
@@ -201,6 +201,8 @@ model.load_state_dict(
         f"best_model_{config['test_function']}.pth", map_location=torch.device("cpu")
     )
 )
+
+model.eval()
 
 x_initial = torch.stack([x_initial_test for _ in range(1)])
 

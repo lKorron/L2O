@@ -177,6 +177,124 @@ class CleanLSTM(nn.Module):
         return None
 
 
+class CustomBatchedDropLSTM(nn.Module):
+    def __init__(
+        self, input_size, output_size, hidden_size, num_layers=2, dropout_prob=0.55
+    ):
+        super().__init__()
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.layers = nn.ModuleList()
+        self.dropout = nn.Dropout(dropout_prob)  # Define dropout layer
+
+        for i in range(num_layers):
+            layer_input_size = input_size if i == 0 else hidden_size
+            self.layers.append(BatchNormLSTMCell(layer_input_size, hidden_size))
+
+        self.h2o = nn.Linear(hidden_size, output_size)
+        self.best_y = None
+
+    def forward(self, x, y, initial_states=None):
+        if self.best_y is None:
+            self.best_y = y.clone()
+        else:
+            self.best_y = torch.min(self.best_y, y)
+
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
+        x = layer_norm(x)
+
+        input_x = torch.cat((x, y, self.best_y), dim=1)
+
+        if initial_states is None:
+            initial_states = [
+                (
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                )
+                for _ in range(self.num_layers)
+            ]
+
+        current_input = input_x
+        new_states = []
+
+        for i, layer in enumerate(self.layers):
+            h, c = layer(current_input, initial_states[i])
+            if self.training:
+                h = self.dropout(h)  # Apply dropout only during training
+            current_input = h if i < self.num_layers - 1 else self.h2o(h)
+            new_states.append((h, c))
+
+        return current_input, new_states
+
+    def init_hidden(self, batch_size, device):
+        self.best_y = None
+        return None
+
+
+class CustomTransformer(nn.Module):
+    def __init__(
+        self,
+        input_size,
+        output_size,
+        hidden_size,
+        num_layers=2,
+        nhead=4,
+        dropout_prob=0.55,
+    ):
+        super(CustomTransformer, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.embedding = nn.Linear(input_size, hidden_size)
+        self.positional_encoding = nn.Parameter(
+            torch.zeros(1, 1000, hidden_size)
+        )  # Assuming max sequence length of 1000
+        self.transformer_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=hidden_size, nhead=nhead, dropout=dropout_prob
+            ),
+            num_layers=num_layers,
+        )
+        self.h2o = nn.Linear(hidden_size, output_size)
+        self.best_y = None
+        self.dropout = nn.Dropout(dropout_prob)
+
+    def forward(self, x, y):
+        if self.best_y is None:
+            self.best_y = y.clone()
+        else:
+            self.best_y = torch.min(self.best_y, y)
+
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
+        x = layer_norm(x)
+
+        input_x = torch.cat((x, y, self.best_y), dim=1)
+        input_x = (
+            self.embedding(input_x) + self.positional_encoding[:, : input_x.size(1), :]
+        )
+
+        mask = self.generate_square_subsequent_mask(input_x.size(1)).to(input_x.device)
+
+        transformer_output = self.transformer_encoder(input_x.permute(1, 0, 2), mask)
+
+        output = self.h2o(
+            transformer_output.permute(1, 0, 2)[:, -1, :]
+        )  # Taking the last output token
+        return output
+
+    def generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = (
+            mask.float()
+            .masked_fill(mask == 0, float("-inf"))
+            .masked_fill(mask == 1, float(0.0))
+        )
+        return mask
+
+    def init_hidden(self, batch_size, device):
+        self.best_y = None
+        return None
+
+
 # class CustomLSTM(nn.Module):
 
 #     def __init__(self, input_size, output_size, hidden_size, num_layers=2):
