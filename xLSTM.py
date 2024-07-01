@@ -92,25 +92,58 @@ class sLSTMCell(nn.Module):
         # Calculate the activation of the states
         z_t = torch.tanh(z_tilda)  # (batch_size, hidden_size)
         # Exponential activation of the input gate
-        i_t = torch.exp(i_tilda)  # (batch_size, hidden_size)
+        i_t = torch.exp(torch.clamp(i_tilda, min=-10, max=10))
         # Exponential activation of the forget gate
         f_t = torch.sigmoid(f_tilda)  # (batch_size, hidden_size)
         # Sigmoid activation of the output gate
         o_t = torch.sigmoid(o_tilda)  # (batch_size, input_size)
+
+        if torch.isnan(z_t).any():
+            print("nan values found in z_t")
+        if torch.isnan(i_t).any():
+            print("nan values found in i_t")
+        if torch.isnan(f_t).any():
+            print("nan values found in f_t")
+        if torch.isnan(o_t).any():
+            print("nan values found in o_t")
+
         # Calculate the stabilization state
-        m_t = torch.max(torch.log(f_t) + m, torch.log(i_t))  # (batch_size, hidden_size)
+        m_t = torch.max(
+            torch.log(f_t + 1e-9) + m, torch.log(i_t + 1e-9)
+        )  # Add small epsilon to avoid log(0)
         # Calculate the input stabilization state
-        i_prime = torch.exp(i_tilda - m_t)  # (batch_size, hidden_size)
+        i_prime = torch.exp(
+            torch.clamp(i_tilda - m_t, min=-10, max=10)
+        )  # Clamping to prevent large values
+
+        if torch.isnan(m_t).any():
+            print("nan values found in m_t")
+        if torch.isnan(i_prime).any():
+            print("nan values found in i_prime")
 
         # Calculate the new internal states
         c_t = f_t * c + i_prime * z_t  # (batch_size, hidden_size)
         n_t = f_t * n + i_prime  # (batch_size, hidden_size)
+
+        # Ensure n_t is not zero to avoid division by zero
+        n_t = torch.where(n_t < 1e-9, torch.tensor(1e-9, device=n_t.device), n_t)
 
         # Calculate the stabilized hidden state
         h_tilda = c_t / n_t  # (batch_size, hidden_size)
 
         # Calculate the new hidden state
         h_t = o_t * h_tilda  # (batch_size, hidden_size)
+
+        # Check for nan values after state updates
+        if torch.isnan(c_t).any():
+            print("nan values found in c_t")
+        if torch.isnan(n_t).any():
+            print("nan values found in n_t")
+        if torch.isnan(h_tilda).any():
+            print("nan values found in h_tilda")
+        if torch.isnan(h_t).any():
+            print("nan values found in h_t")
+
         return h_t, (
             h_t,
             c_t,

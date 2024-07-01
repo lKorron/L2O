@@ -230,6 +230,7 @@ class CustomBatchedDropLSTM(nn.Module):
         self.best_y = None
         return None
 
+
 from xLSTM import sLSTMCell, mLSTMCell
 
 
@@ -260,13 +261,19 @@ class CustomXLSTM(nn.Module):
 
         input_x = torch.cat((x, y, self.best_y), dim=1)
 
+        if torch.isnan(input_x).any():
+            print("nan values found in input_x before normalization")
+
         # Compute the mean and standard deviation along the batch dimension (dim=0)
         mean = input_x.mean(dim=0, keepdim=True)
         std = input_x.std(dim=0, keepdim=True)
-        std[std == 0] = 1  # Prevent division by zero
+        std = std + 1e-9  # Prevent division by zero
 
         # Normalize input_x
         input_x = (input_x - mean) / std
+
+        if torch.isnan(input_x).any():
+            print("nan values found in input_x after normalization")
 
         if initial_states is None:
             initial_states = [
@@ -281,17 +288,12 @@ class CustomXLSTM(nn.Module):
 
         current_input = input_x
         new_states = []
-        print(current_input.shape)
         for i, layer in enumerate(self.layers):
             h, c = layer(current_input, initial_states[i])
-            print(h.shape)
-            print(h)
-            2 / 0
             current_input = h if i < self.num_layers - 1 else self.h2o(h)
             new_states.append(c)
 
-        print(current_input)
-        2 / 0
+        # print(current_input)
         return current_input, new_states
 
     def init_hidden(self, batch_size, device):

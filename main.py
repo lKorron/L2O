@@ -11,6 +11,8 @@ from config import config
 from functions_torch import *
 from model import *
 
+# torch.autograd.set_detect_anomaly(True)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 wandb.login(key=os.environ["WANDB_API"])
