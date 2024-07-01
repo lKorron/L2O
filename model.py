@@ -265,12 +265,15 @@ class CustomXLSTM(nn.Module):
             print("nan values found in input_x before normalization")
 
         # Compute the mean and standard deviation along the batch dimension (dim=0)
-        mean = input_x.mean(dim=0, keepdim=True)
-        std = input_x.std(dim=0, keepdim=True)
-        std = std + 1e-9  # Prevent division by zero
+        print(input_x)
+        if input_x.shape[0] != 1:
+            mean = input_x.mean(dim=0, keepdim=True)
+            std = input_x.std(dim=0, keepdim=True)
 
-        # Normalize input_x
-        input_x = (input_x - mean) / std
+            std = std + 1e-9  # Prevent division by zero
+
+            # Normalize input_x
+            input_x = (input_x - mean) / std
 
         if torch.isnan(input_x).any():
             print("nan values found in input_x after normalization")
@@ -293,7 +296,6 @@ class CustomXLSTM(nn.Module):
             current_input = h if i < self.num_layers - 1 else self.h2o(h)
             new_states.append(c)
 
-        # print(current_input)
         return current_input, new_states
 
     def init_hidden(self, batch_size, device):
