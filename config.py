@@ -12,8 +12,8 @@ config = {
     "test_size": 100,
     # ML staff
     "train": True,
-    "model": "CustomBatchedDropLSTM",
-    "layers": 2,
+    "model": "CustomXLSTM",
+    "layers": 1,
     "lr": 3e-4,
     "hidden": 512,
     "epoch": 5000,

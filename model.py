@@ -230,6 +230,74 @@ class CustomBatchedDropLSTM(nn.Module):
         self.best_y = None
         return None
 
+from xLSTM import sLSTMCell, mLSTMCell
+
+
+class CustomXLSTM(nn.Module):
+    def __init__(
+        self, input_size, output_size, hidden_size, num_layers=2, dropout_prob=0.55
+    ):
+        super().__init__()
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.layers = nn.ModuleList()
+
+        for i in range(num_layers):
+            layer_input_size = input_size if i == 0 else hidden_size
+            self.layers.append(sLSTMCell(layer_input_size, hidden_size))
+
+        self.h2o = nn.Linear(hidden_size, output_size)
+        self.best_y = None
+
+    def forward(self, x, y, initial_states=None):
+        if self.best_y is None:
+            self.best_y = y.clone()
+        else:
+            self.best_y = torch.min(self.best_y, y)
+
+        layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
+        x = layer_norm(x)
+
+        input_x = torch.cat((x, y, self.best_y), dim=1)
+
+        # Compute the mean and standard deviation along the batch dimension (dim=0)
+        mean = input_x.mean(dim=0, keepdim=True)
+        std = input_x.std(dim=0, keepdim=True)
+        std[std == 0] = 1  # Prevent division by zero
+
+        # Normalize input_x
+        input_x = (input_x - mean) / std
+
+        if initial_states is None:
+            initial_states = [
+                (
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                    torch.randn((input_x.size(0), self.hidden_size), device=x.device),
+                )
+                for _ in range(self.num_layers)
+            ]
+
+        current_input = input_x
+        new_states = []
+        print(current_input.shape)
+        for i, layer in enumerate(self.layers):
+            h, c = layer(current_input, initial_states[i])
+            print(h.shape)
+            print(h)
+            2 / 0
+            current_input = h if i < self.num_layers - 1 else self.h2o(h)
+            new_states.append(c)
+
+        print(current_input)
+        2 / 0
+        return current_input, new_states
+
+    def init_hidden(self, batch_size, device):
+        self.best_y = None
+        return None
+
 
 class CustomTransformer(nn.Module):
     def __init__(
