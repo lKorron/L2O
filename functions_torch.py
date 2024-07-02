@@ -54,7 +54,9 @@ class CustomComplexFunction(nn.Module):
         return (term1 + term2 + term3).unsqueeze(1)
 
     def generate(
-        self, batch_size: int, dimension: int, lower: float = -5.0, upper: float = 5.0
+        self,
+        batch_size: int,
+        dimension: int,
     ) -> torch.Tensor:
         """
         generate function
