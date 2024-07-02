@@ -22,9 +22,58 @@ class Rastrigin(nn.Module):
         ).unsqueeze(1)
 
     def generate(self, batch_size: int, dimension: int) -> torch.Tensor:
+        """
+        generate function
+        save hyperparameters (self.x_opt)
+        return y_opt
+        """
         self.x_opt = (
             torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
         )
+        return self.forward(self.x_opt.clone())
+
+
+class CustomComplexFunction(nn.Module):
+    def __init__(self):
+        super(CustomComplexFunction, self).__init__()
+        self.x_opt = None
+        self.B = None
+        self.C = None
+        self.D = None
+        self.freq1 = None
+        self.freq2 = None
+        self.phase_shift = None
+
+    def forward(self, x):
+        z = x - self.x_opt
+        term1 = self.B * torch.sum(
+            torch.sin(self.freq1 * torch.pi * z + self.phase_shift), dim=1
+        )
+        term2 = self.C * torch.sum(torch.exp(self.D * z**2), dim=1)
+        term3 = torch.sum(torch.log1p(torch.abs(z)), dim=1)
+        return (term1 + term2 + term3).unsqueeze(1)
+
+    def generate(
+        self, batch_size: int, dimension: int, lower: float = -5.0, upper: float = 5.0
+    ) -> torch.Tensor:
+        """
+        generate function
+        save hyperparameters (self.x_opt, self.B, self.C, self.D, self.freq1, self.freq2, self.phase_shift)
+        return y_opt
+        """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.x_opt = (
+            torch.rand(batch_size, dimension, device=device) * (upper - lower) + lower
+        )
+
+        # Generate hyperparameters
+        self.B = torch.rand(1).item() * 10
+        self.C = torch.rand(1).item() * 10
+        self.D = torch.rand(1).item()
+        self.freq1 = torch.randint(1, 10, (1,)).item()
+        self.freq2 = torch.randint(1, 10, (1,)).item()
+        self.phase_shift = torch.rand(1).item()
+
         return self.forward(self.x_opt.clone())
 
 

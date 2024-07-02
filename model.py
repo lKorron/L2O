@@ -179,8 +179,13 @@ class CleanLSTM(nn.Module):
 
 class CustomBatchedDropLSTM(nn.Module):
     def __init__(
-        self, input_size, output_size, hidden_size, num_layers=2, dropout_prob=0.55
-    ):
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_size: int,
+        num_layers: int = 2,
+        dropout_prob: float = 0.55,
+    ) -> None:
         super().__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
@@ -194,7 +199,12 @@ class CustomBatchedDropLSTM(nn.Module):
         self.h2o = nn.Linear(hidden_size, output_size)
         self.best_y = None
 
-    def forward(self, x, y, initial_states=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        initial_states=None,
+    ):
         if self.best_y is None:
             self.best_y = y.clone()
         else:
@@ -202,7 +212,6 @@ class CustomBatchedDropLSTM(nn.Module):
 
         layer_norm = torch.nn.LayerNorm(x.shape[-1], device=x.device)
         x = layer_norm(x)
-
         input_x = torch.cat((x, y, self.best_y), dim=1)
 
         if initial_states is None:
